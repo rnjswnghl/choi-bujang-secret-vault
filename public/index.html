@@ -20,33 +20,18 @@
 </head>
 <body>
   <main>
-    <div class="eyebrow">BYTE BACK · 2단계 서버 자료실</div>
-    <h1>점령된 자료실</h1>
-    <p>지금은 보호 장치가 없는 상태입니다. 아래 기록은 모두 실습을 위해 만든 가상 자료입니다.</p>
-    <div class="notice">로그인하지 않은 방문자도 자료를 볼 수 있습니다. 공개 범위를 확인하고, 다음 제작 단계에서 접근을 차례로 막아 주세요.</div>
-    <ul id="notes" aria-live="polite"><li>가상 자료를 불러오는 중입니다.</li></ul>
+    <div class="eyebrow">BYTE BACK · 3단계 로그인 자료실</div>
+    <h1>가상 자료실</h1>
+    <p>로그인한 계정의 가상 메모를 관리합니다.</p>
+    <div class="notice">3단계는 신원만 확인합니다. 다른 사람의 메모 ID를 알면 접근·수정·삭제할 수 있는 약점이 남아 있습니다.</div>
+    <form id="login"><label>이메일 <input id="email" type="email" autocomplete="username" required></label><label>비밀번호 <input id="password" type="password" autocomplete="current-password" required></label><button>로그인</button></form>
+    <button id="logout" hidden>로그아웃</button>
+    <p id="status" role="status"></p>
+    <section id="workspace" hidden>
+      <form id="editor"><input id="note-id" type="hidden"><label>제목 <input id="title" required maxlength="200"></label><label>본문 <textarea id="body" maxlength="10000"></textarea></label><button>저장</button><button type="button" id="cancel">새 메모</button></form>
+      <ul id="notes" aria-live="polite"></ul>
+    </section>
   </main>
-  <script type="module">
-    const list = document.querySelector('#notes');
-    try {
-      const response = await fetch('/api/notes', { cache: 'no-store' });
-      if (!response.ok) throw new Error('공개 자료를 읽을 수 없습니다.');
-      const data = await response.json();
-      if (!Array.isArray(data.notes)) throw new Error('자료 형식이 맞지 않습니다.');
-      list.replaceChildren(...data.notes.map(note => {
-        const item = document.createElement('li');
-        const title = document.createElement('strong');
-        const content = document.createElement('span');
-        title.textContent = note.title;
-        content.textContent = note.content;
-        item.append(title, content);
-        return item;
-      }));
-    } catch (error) {
-      const item = document.createElement('li');
-      item.textContent = error.message;
-      list.replaceChildren(item);
-    }
-  </script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

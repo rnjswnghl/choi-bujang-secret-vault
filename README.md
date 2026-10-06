@@ -46,3 +46,24 @@
 - `/api/notes`는 공개 주소이며 로그인·소유자 검사 없이 서버 권한으로 자료를 반환합니다. RLS와 DB 권한 회수만으로 이 API의 익명 열람을 막지 못합니다. 3단계 전까지 가상 메모만 사용합니다.
 - SQL Editor 실행, 실제 환경변수 등록, 운영 배포, 화면 네 카드, 운영 정적 문장 검색, 심판 공개 키 요청: 미실행.
 - 옛 공개 커밋과 옛 배포는 지우지 않았습니다. 기존 문장과 인코딩 fixture를 복원할 수 있으므로 과거 노출이 해소됐다고 주장하지 않습니다.
+
+## 3단계 저장점 · 진짜 로그인을 붙입니다
+
+2단계 배포 식별 오류를 수정한 커밋 ebd35d1에서 이어받았습니다. 앞의 2단계 미실행 기록은 당시 상태이며, 해당 커밋의 Vercel 성공 상태는 확인했습니다. 운영 주소는 https://choi-bujang-secret-vault-khaki.vercel.app 입니다.
+
+공식 Supabase SDK로 이메일·비밀번호 로그인, 로그아웃, 세션 갱신을 처리합니다. 실패 이유는 화면에 표시합니다. 브라우저에는 publishable key만 있으며 서버 키를 포함하지 않습니다. 서버는 기존 src/verify-login.mjs를 그대로 호출하고 확인된 사용자 ID만 사용합니다. 무로그인/잘못된 인증 형식은 설정 상태와 관계없이 401 JSON으로 거부합니다. 인증된 목록은 owner_id로 필터링하며 추가 시 확인된 사용자 ID를 저장합니다.
+
+경로: GET/POST /api/notes, GET/PUT/DELETE /api/notes/:id. 메모 형식은 {id,title,body}, 목록은 배열입니다. POST에서 ID 생략 시 UUID를 생성해 {id}를 반환합니다. 삭제 후 GET은 404입니다. 발급자·JWKS·audience와 경로는 aleph.config.json에 기록했습니다. judgeIssuer는 보존했습니다.
+
+### 실제 적용 순서
+
+1. Supabase SQL Editor에서 sql/step2.sql을 먼저 실행하고 이어 sql/step3.sql을 실행합니다. 기존 자료는 보존되며 ID는 UUID로 바뀝니다. 이미 3단계 SQL을 적용했다면 step2.sql을 다시 실행하지 않습니다.
+2. Authentication → Users에서 학습용 A·B 계정을 직접 생성합니다. 비밀번호는 여기나 Git에 남기지 않습니다. 기존 네 메모는 owner_id가 null이므로 로그인 계정의 목록에 나타나지 않습니다. 필요하면 Table Editor에서 A의 사용자 UUID를 owner_id에 직접 지정합니다.
+3. Vercel Settings → Environment Variables에 SUPABASE_URL과 서버 전용 SUPABASE_SECRET_KEY를 직접 등록합니다. 이미 등록했다면 유지합니다. 환경변수를 바꾼 경우 최신 커밋으로 재배포합니다. 코드 변경은 GitHub 연결로 자동 배포됩니다.
+4. 사이트의 로그인 버튼 → 새 메모 저장 → 수정 → 삭제 → 로그아웃을 확인합니다. 시크릿 창의 /api/notes는 401 JSON이어야 합니다. /data.json은 메모 0건, /aleph.json은 3단계, 첫 응답은 nosniff여야 합니다.
+
+로컬 재실행: npm run build -- --local. 저장점 커밋 후 npm run bundle. 묶음은 무로그인 운영 요청의 실제 결과만 기록하며 A CRUD는 직접 실행 전까지 미실행입니다. SQL 실행·A/B 로그인·CRUD 실제 시험은 아직 미실행입니다.
+
+### 4단계에서 막을 남은 약점
+
+로그인한 B는 A의 메모 UUID를 알면 개별 GET·PUT·DELETE가 가능합니다. 개별 경로의 소유자 검사는 의도적으로 아직 구현하지 않았습니다. B의 목록에는 A 메모가 표시되지 않습니다. 서버 키는 RLS를 우회하므로 이 소유자 검사를 서버에 추가해야 합니다. 가상 메모만 사용합니다. 옛 커밋·배포의 노출도 그대로 남아 있습니다.

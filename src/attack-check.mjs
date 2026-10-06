@@ -1,19 +1,25 @@
-// Student checks only; never include response bodies or secrets in the bundle.
+// Only report actual requests. Never include tokens or memo bodies.
 export async function runAttackChecks(config) {
-  const checks = [
-    { attackId: 'static_note_read', expected: '/data.json은 메모 0건 또는 404', observed: '미실행: 실제 배포 주소가 설정되지 않음' },
-    { attackId: 'public_api_read', expected: '2단계 공개 API에서 가상 메모 4건 확인; 접근 제한은 아직 없음', observed: '미실행: 실제 배포 주소가 설정되지 않음' },
-  ];
-  if (!config.publicAppUrl) return checks;
-  const app = new URL(config.publicAppUrl);
-  if (app.protocol !== 'https:' || app.username || app.password || app.pathname !== '/' || app.search || app.hash || app.hostname.endsWith('.example')) throw new Error('실제 배포 HTTPS 주소를 확인하세요.');
-  for (const [i, path] of ['/data.json', '/api/notes'].entries()) {
+  const attempts = [];
+  for (const [path, id, expected] of [
+    ['/api/notes', 'anonymous_list', '401 또는 403과 JSON 오류'],
+    ['/data.json', 'static_notes', '메모 0건 또는 404'],
+    ['/aleph.json', 'deployment_identity', '200과 현재 단계 정보'],
+    ['/', 'security_header', 'nosniff 헤더'],
+  ]) {
+    let observed;
     try {
-      const response = await fetch(new URL(path, app), { redirect: 'error', signal: AbortSignal.timeout(10000) });
-      const data = response.ok ? await response.json() : null;
-      const count = Array.isArray(data?.notes) ? data.notes.length : null;
-      checks[i].observed = `직접 요청 HTTP ${response.status}; 메모 수 ${count ?? '확인 불가'}; ${i === 0 ? ((response.status === 404 || (response.ok && count === 0)) ? '정적 노출 없음' : '정적 노출 확인 실패') : ((response.ok && count === 4) ? '비로그인 API 열람 가능: 남은 약점' : '네 건 열람 확인 실패')}`;
-    } catch { checks[i].observed = '요청 실패: 배포 상태 또는 연결 확인 필요'; }
+      const response = await fetch(new URL(path, config.publicAppUrl), { redirect: 'error', signal: AbortSignal.timeout(10000) });
+      const jsonType = response.headers.get('content-type')?.includes('application/json');
+      const data = jsonType ? await response.json() : null;
+      observed = `HTTP ${response.status}; JSON ${!!jsonType}`;
+      if (id === 'anonymous_list') observed += `; 인증 거부 ${[401,403].includes(response.status) && typeof data?.error === 'string'}`;
+      if (id === 'static_notes') observed += `; 메모 0건/404 ${response.status === 404 || (response.ok && Array.isArray(data?.notes) && data.notes.length === 0)}`;
+      if (id === 'deployment_identity') observed += `; 단계 ${data?.step ?? '확인 불가'}; 현재 단계 일치 ${response.ok && data?.step === config.step}`;
+      if (id === 'security_header') observed += `; nosniff ${response.headers.get('x-content-type-options') === 'nosniff'}`;
+    } catch { observed = '미실행/연결 실패: 운영 배포를 확인하세요.'; }
+    attempts.push({ attackId: id, expected, observed });
   }
-  return checks;
+  attempts.push({ attackId: 'account_a_crud', expected: '정상 A 로그인 후 추가·수정·삭제 가능', observed: '미실행: 테스트 계정과 SQL 적용 필요; 비밀번호·토큰을 묶음에 저장하지 않음' });
+  return attempts;
 }
