@@ -15,6 +15,7 @@ export async function runAttackChecks(config) {
       observed = `HTTP ${response.status}; JSON ${!!jsonType}`;
       if (id === 'anonymous_list') observed += `; 인증 거부 ${[401,403].includes(response.status) && typeof data?.error === 'string'}`;
       if (id === 'static_notes') observed += `; 메모 0건/404 ${response.status === 404 || (response.ok && Array.isArray(data?.notes) && data.notes.length === 0)}`;
+      if (id === 'deployment_identity') observed += `; 허용 경로 ${Array.isArray(data?.allowedRoutes) ? data.allowedRoutes.length : 0}`;
       if (id === 'deployment_identity') observed += `; 단계 ${data?.step ?? '확인 불가'}; 현재 단계 일치 ${response.ok && data?.step === config.step}`;
       if (id === 'security_header') observed += `; nosniff ${response.headers.get('x-content-type-options') === 'nosniff'}`;
     } catch { observed = '미실행/연결 실패: 운영 배포를 확인하세요.'; }
@@ -32,5 +33,12 @@ export async function runAttackChecks(config) {
   } catch { direct = '미실행/연결 실패: anon 직접 요청 확인 불가'; }
   attempts.push({ attackId: 'anon_data_api', expected: '세션 없는 anon 직접 Data API 읽기 거부', observed: direct });
   attempts.push({ attackId: 'cross_owner_crud', expected: 'A/B 본인 CRUD 허용, 타인 GET·PUT·DELETE 404, 소유자 변경 거부', observed: '운영 A/B 시험 미실행; 로컬 모의 테스트 3건 통과는 실제 계정 검증 또는 심판 판정이 아님' });
+  let keyCheck;
+  try {
+    const responses = await Promise.all(['/','/app.js'].map(path => fetch(new URL(path, config.publicAppUrl), {redirect:'error',signal:AbortSignal.timeout(10000)})));
+    const sources = await Promise.all(responses.map(response => response.text()));
+    keyCheck = responses.every(response => response.ok) ? `화면 파일 2개 확인; 공개/비밀 키 패턴 없음 ${sources.every(source => !/sb_publishable_|sb_secret_|eyJ[A-Za-z0-9_-]{12,}\.eyJ/.test(source))}` : '화면 파일 검사 실패: HTTP 오류';
+  } catch { keyCheck = '미실행/연결 실패: 배포 화면 파일 검사 필요'; }
+  attempts.push({attackId:'browser_key_scan',expected:'화면 HTML·JS에 Supabase 공개/비밀 키 없음',observed:keyCheck});
   return attempts;
 }

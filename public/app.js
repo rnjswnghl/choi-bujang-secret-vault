@@ -1,5 +1,20 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
-const client = createClient('https://hzovkgmggfqoumxwbejm.supabase.co', 'sb_publishable_nNaEZ0ROeB-Zu_9ko7-c4Q_FCKYuwlS');
+// This SDK placeholder has no Supabase permissions; the server supplies the real key.
+const authFetch = async (input, init) => {
+  const upstream = new URL(typeof input === 'string' ? input : input.url);
+  if (upstream.origin !== 'https://hzovkgmggfqoumxwbejm.supabase.co' || !/^\/auth\/v1\/(token|logout|user)$/.test(upstream.pathname)) throw new Error('허용하지 않는 직접 요청입니다.');
+  const target = new URL('/api/auth', window.location.origin);
+  target.searchParams.set('path', upstream.pathname.split('/').pop());
+  for (const [key, value] of upstream.searchParams) target.searchParams.append(key, value);
+  const headers = new Headers(init?.headers);
+  headers.delete('apikey');
+  if (headers.get('Authorization') === 'Bearer auth-via-server') headers.delete('Authorization');
+  return fetch(target, { ...init, headers, credentials: 'same-origin' });
+};
+const client = createClient('https://hzovkgmggfqoumxwbejm.supabase.co', 'auth-via-server', {
+  global: { fetch: authFetch },
+  auth: { storageKey: 'sb-hzovkgmggfqoumxwbejm-auth-token' },
+});
 const el = id => document.getElementById(id);
 let generation = 0;
 const say = message => { el('status').textContent = message; };

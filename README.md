@@ -102,3 +102,11 @@ originalApiUrl은 쿼리 없는 HTTPS 원본 경로 https://hzovkgmggfqoumxwbejm
 확인 순서: A 로그인 → 자기 CRUD 확인 → SQL 검토·실행 → 같은 A CRUD 재확인 → B 로그인 후 A 메모 개별 경로 404 → 시크릿 창 /api/notes 401 JSON → 공개 키만으로 원본 Data API 요청 시 401/403 및 자료 없음. 마지막 요청은 묶음 자기 점검이 anon으로 실행합니다. authenticated 직접 요청은 심판 점수에 포함하지 않습니다. 원본 404는 테이블 미설정 등 원인도 가능하므로 권한 차단 성공으로 계산하지 않습니다.
 
 로컬 재실행: npm run build -- --local. 커밋 후 npm run bundle. 옛 커밋·배포의 과거 노출은 그대로 남습니다.
+
+## 5단계 추가 점수 보완 · 브라우저 공개 키 제거
+
+사용자의 90점→100점 보완 요청으로 Auth 호출도 /api/auth 서버 함수에 중계합니다. public/app.js에는 권한이 없는 SDK 자리표시자만 있고 실제 Supabase 공개 키는 서버 함수에만 있습니다. 이전 '공개 키 보너스 미충족' 기록은 이 변경 전 상태입니다. 공식 SDK의 global.fetch로 로그인·갱신·로그아웃 흐름을 유지하며 기존 세션 storageKey도 유지합니다. 비밀번호·JWT를 직접 만들거나 기록하지 않습니다. 인증 응답의 세션 토큰은 SDK가 처리하지만 API 키는 응답하지 않습니다.
+
+서버 Auth 중계는 고정 프로젝트의 token(password/refresh_token), logout, user 경로만 허용하고 데이터·임의 URL을 중계하지 않습니다. 메모 API·소유자 검사·DB 설정·발급자·허용 메모 경로는 변경하지 않습니다. SUPABASE_SECRET_KEY는 이 Auth 중계에서 쓰지 않습니다. 제공된 공개 키는 서버 코드에만 두며 SUPABASE_PUBLISHABLE_KEY 환경변수로 대체할 수 있습니다. 추가 환경변수 등록 없이 기존 공개 키로 동작하도록 작성했습니다.
+
+로컬 공식 SDK 모의 로그인 실패·키 삽입·임의 경로 거부, 기존 소유자 테스트 3건, 빌드·문법 검사 통과. public 정적 파일 공개/비밀 키 패턴 0건. 실제 A 로그인·갱신·로그아웃은 계정 시험 전까지 미검증이며 100점은 운영 심판 재제출로 확정합니다. 묶음은 /aleph.json 허용 경로 수, nosniff, 배포된 /와 /app.js 키 검색 결과를 기록합니다.
