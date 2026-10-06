@@ -67,3 +67,20 @@
 ### 4단계에서 막을 남은 약점
 
 로그인한 B는 A의 메모 UUID를 알면 개별 GET·PUT·DELETE가 가능합니다. 개별 경로의 소유자 검사는 의도적으로 아직 구현하지 않았습니다. B의 목록에는 A 메모가 표시되지 않습니다. 서버 키는 RLS를 우회하므로 이 소유자 검사를 서버에 추가해야 합니다. 가상 메모만 사용합니다. 옛 커밋·배포의 노출도 그대로 남아 있습니다.
+
+## 4단계 저장점 · 로그인해도 내 자료만 보이게 합니다
+
+마지막 3단계 저장점 299022e와 README의 단계는 일치했고 다른 변경은 없었습니다. 3단계 Vercel 성공과 운영 무로그인 401 JSON, 빈 data.json, 3단계 aleph.json, nosniff는 이전 작업에서 확인했습니다. 앞의 미실행 기록은 당시 기록입니다.
+
+현재 API: 목록·개별 GET·PUT·DELETE 모두 검증된 사용자 ID로 owner_id를 필터링합니다. POST의 owner_id는 검증된 ID로 서버가 작성합니다. PUT은 title·body만 허용하며 소유자를 변경하지 않으므로 기존 행과 새 행의 소유자가 유지됩니다. URL 신원 값과 본문의 owner_id·userId·role은 거부합니다. 타인/없는 행은 같은 404 JSON, 무로그인은 401 JSON입니다. 로그인 SDK·검증 도우미·메모 응답 계약·보안 헤더·aleph.json 생성·다른 도구는 보존했습니다. 실제 GET/POST 목록, GET/PUT/DELETE /:id 경로는 config와 일치합니다.
+
+### 검토 후 SQL Editor에서 직접 실행
+
+1. sql/step4-owners.sql: 예시 A/B 이메일을 실제 학습 계정 이메일로 바꾸세요. auth.users에서 ID를 찾고 기존 UUID fixture 앞 세 건은 A, 마지막 한 건은 B에 연결합니다. 계정 또는 fixture가 없으면 전체 작업을 취소합니다. 다른 메모는 수정하지 않습니다. 아직 적용하지 않았습니다.
+2. sql/step4-permissions.sql: 적용 전후 role_table_grants와 has_table_privilege 결과를 비교합니다. anon의 모든 권한은 false, authenticated는 SELECT/INSERT/UPDATE/DELETE만 true여야 합니다. 테이블·칼럼의 기존 PUBLIC/anon/authenticated 권한과 이 테이블의 기존 정책을 회수하고 네 소유자 정책으로 교체합니다. UPDATE는 USING과 WITH CHECK를 모두 둡니다. 다른 테이블은 변경하지 않습니다. 실제 적용 전후 DB 조회는 미실행이며 결과를 꾸며 기록하지 않았습니다.
+
+서버 전용 키는 RLS를 우회하므로 서버 API의 소유자 검사도 필수입니다. 직접 Data API 자기 점검은 세션 없는 공개 키의 anon 역할로만 실행합니다. authenticated 역할의 직접 접근은 점수/심판 재현 결과에 포함하지 않습니다.
+
+로컬 검증: `node --test test/step4-owner.test.mjs`에서 타인 CRUD 차단, 본인 CRUD·삭제 후 404, 소유자 위조 거부의 모의 테스트 3건 통과. 실제 Supabase 인증·RLS 시험이나 심판 판정은 아닙니다. `npm run build -- --local` 통과. 커밋 후 `npm run bundle`은 실제 운영 응답을 별도 기록합니다.
+
+직접 확인: A로 로그인해 세 메모 확인 및 새 메모 추가·수정·삭제 → 로그아웃 → B로 로그인해 본인 한 건과 CRUD 확인. 상대 UUID의 GET·PUT·DELETE는 404여야 하며 실패 요청 후 원본 자료가 그대로인지 확인하세요. 5단계 뒤에도 다시 확인합니다. 운영 A/B 시험, SQL 적용·권한 대조는 아직 미실행입니다. 옛 공개 커밋·배포의 과거 노출은 해소됐다고 주장하지 않습니다.
