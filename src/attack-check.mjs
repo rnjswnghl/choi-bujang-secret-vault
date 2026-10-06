@@ -24,7 +24,7 @@ export async function runAttackChecks(config) {
   let direct;
   try {
     // Public publishable key, no session token: Supabase assigns the anon role.
-    const response = await fetch('https://hzovkgmggfqoumxwbejm.supabase.co/rest/v1/vault_notes?select=id&limit=1', {
+    const response = await fetch(config.originalApiUrl || 'https://hzovkgmggfqoumxwbejm.supabase.co/rest/v1/vault_notes', {
       headers: { apikey: 'sb_publishable_nNaEZ0ROeB-Zu_9ko7-c4Q_FCKYuwlS' },
       redirect: 'error', signal: AbortSignal.timeout(10000),
     });

@@ -84,3 +84,21 @@
 로컬 검증: `node --test test/step4-owner.test.mjs`에서 타인 CRUD 차단, 본인 CRUD·삭제 후 404, 소유자 위조 거부의 모의 테스트 3건 통과. 실제 Supabase 인증·RLS 시험이나 심판 판정은 아닙니다. `npm run build -- --local` 통과. 커밋 후 `npm run bundle`은 실제 운영 응답을 별도 기록합니다.
 
 직접 확인: A로 로그인해 세 메모 확인 및 새 메모 추가·수정·삭제 → 로그아웃 → B로 로그인해 본인 한 건과 CRUD 확인. 상대 UUID의 GET·PUT·DELETE는 404여야 하며 실패 요청 후 원본 자료가 그대로인지 확인하세요. 5단계 뒤에도 다시 확인합니다. 운영 A/B 시험, SQL 적용·권한 대조는 아직 미실행입니다. 옛 공개 커밋·배포의 과거 노출은 해소됐다고 주장하지 않습니다.
+
+## 5단계 저장점 · 자료 요청을 서버 한곳으로 모읍니다
+
+README와 마지막 4단계 저장점 1e2d930의 단계는 일치했고 작업 트리는 깨끗했습니다. 브라우저의 직접 메모 읽기/쓰기 호출: 없음. 따라서 public/app.js와 로그인(Auth) 호출은 수정하지 않았습니다. 메모 요청은 이미 GET/POST /api/notes와 GET/PUT/DELETE /api/notes/:id를 통해 서버로만 갑니다. 서버 코드와 환경변수·로그인 검증·소유자 검사는 그대로 보존했습니다.
+
+서버 CRUD 확인: 기존 소유자 모의 테스트 3건 통과. 실제 A 계정 로그인 CRUD, B 타인 접근 거부는 계정·DB 적용 정보가 없어서 미실행입니다. 모의 테스트가 실제 정상 동작이나 심판 판정을 증명하지 않습니다. 권한 회수 전 실제 A로 로그인하여 메모 조회·추가·수정·삭제를 먼저 확인하세요.
+
+### 검토 후 SQL Editor에서 실행
+
+sql/step5-server-only.sql은 이 테이블의 PUBLIC·anon·authenticated 테이블/칼럼 권한만 회수합니다. 데이터, RLS와 기존 정책, 서버 역할, 다른 테이블은 바꾸지 않습니다. 적용 전후 role_table_grants, has_table_privilege를 비교하고 적용 후 has_any_column_privilege도 확인합니다. 두 직접 역할의 모든 권한은 false, service_role CRUD는 true여야 합니다. SQL은 아직 실행하지 않았고 실제 DB 권한 대조 결과도 미실행입니다. 기존 4단계 SQL을 재실행하면 authenticated 권한이 다시 생기므로 이 SQL을 마지막에 적용하세요.
+
+originalApiUrl은 쿼리 없는 HTTPS 원본 경로 https://hzovkgmggfqoumxwbejm.supabase.co/rest/v1/vault_notes 입니다. 단계는 5이며 발급자·allowedRoutes는 그대로입니다. /aleph.json에도 allowedRoutes와 originalApiUrl을 빌드 시 기록합니다. 보안 헤더와 공개 JSON의 메모 0건은 유지합니다.
+
+로그인(Auth) SDK 호출을 유지하라는 지시에 따라 브라우저 publishable key는 남아 있습니다. 따라서 '화면 코드에 공개 키 없음' 보너스는 미충족입니다. 공개 키 제거만으로 보안을 주장하지 않으며 실제 저장소 권한 회수가 필요합니다. 별도 로그인 프록시는 이번 요청에서 추가하지 않았습니다.
+
+확인 순서: A 로그인 → 자기 CRUD 확인 → SQL 검토·실행 → 같은 A CRUD 재확인 → B 로그인 후 A 메모 개별 경로 404 → 시크릿 창 /api/notes 401 JSON → 공개 키만으로 원본 Data API 요청 시 401/403 및 자료 없음. 마지막 요청은 묶음 자기 점검이 anon으로 실행합니다. authenticated 직접 요청은 심판 점수에 포함하지 않습니다. 원본 404는 테이블 미설정 등 원인도 가능하므로 권한 차단 성공으로 계산하지 않습니다.
+
+로컬 재실행: npm run build -- --local. 커밋 후 npm run bundle. 옛 커밋·배포의 과거 노출은 그대로 남습니다.
