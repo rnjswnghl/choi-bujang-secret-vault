@@ -1,0 +1,14 @@
+[
+  {
+    "name": "password-guessing",
+    "condition": "로그인 실패 30건 이상과 수준 10 이상; 짧은 시간 또는 반복 추측 증거가 있으면 높은 확신도",
+    "evidence": "MITRE ATT&CK T1110.001: 반복적인 비밀번호 추측",
+    "source": "https://attack.mitre.org/techniques/T1110/001/"
+  },
+  {
+    "name": "password-spraying",
+    "condition": "여러 계정의 로그인 실패 및 같은 비밀번호 또는 규칙적 자동 시도 증거",
+    "evidence": "MITRE ATT&CK T1110.003: 여러 계정에 하나 또는 소수 비밀번호 대입",
+    "source": "https://attack.mitre.org/techniques/T1110/003/"
+  }
+]

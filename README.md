@@ -110,3 +110,13 @@ originalApiUrl은 쿼리 없는 HTTPS 원본 경로 https://hzovkgmggfqoumxwbejm
 서버 Auth 중계는 고정 프로젝트의 token(password/refresh_token), logout, user 경로만 허용하고 데이터·임의 URL을 중계하지 않습니다. 메모 API·소유자 검사·DB 설정·발급자·허용 메모 경로는 변경하지 않습니다. SUPABASE_SECRET_KEY는 이 Auth 중계에서 쓰지 않습니다. 제공된 공개 키는 서버 코드에만 두며 SUPABASE_PUBLISHABLE_KEY 환경변수로 대체할 수 있습니다. 추가 환경변수 등록 없이 기존 공개 키로 동작하도록 작성했습니다.
 
 로컬 공식 SDK 모의 로그인 실패·키 삽입·임의 경로 거부, 기존 소유자 테스트 3건, 빌드·문법 검사 통과. public 정적 파일 공개/비밀 키 패턴 0건. 실제 A 로그인·갱신·로그아웃은 계정 시험 전까지 미검증이며 100점은 운영 심판 재제출로 확정합니다. 묶음은 /aleph.json 허용 경로 수, nosniff, 배포된 /와 /app.js 키 검색 결과를 기록합니다.
+
+## 보너스 xdr-01 저장점 · 무차별 로그인 탐지
+
+`npm run xdr:run -- brute-force`로 28개 학습 경보를 판정하고 result.json과 alerts.log를 생성합니다. read-alerts는 시각·주소·가상 계정·수준·설명만 추출합니다. MITRE T1110.001/T1110.003 패턴을 사용하며 수치 임계값은 학습용 설정입니다. 애매한 이벤트만 configureJev(adapter) 연결부로 전달하며 현재 Jev 서비스가 없어 alert로 대체합니다. 모델 판단만으로 차단하지 않습니다. 정상 이벤트는 record입니다.
+
+서버/API와 기존 src/decider.mjs 규칙은 보존했습니다. src/xdr-decider.mjs의 decideWithXdr는 신뢰된 게이트웨이의 별도 sourceIp를 받아 만료 전 IP 거부 규칙을 적용한 뒤 기존 판정기를 호출합니다. 현재 운영 계약에는 IP가 없어 실제 엔진 연결은 미완료입니다. 기본 판정기는 starter.deny로 모두 거부하므로 정상 운영 통과를 주장하지 않습니다. 연결 테스트에서 허용하는 기준 판정기를 사용해 정상 요청 보존을 확인합니다. 기존 허용 이유 코드를 새로 등록하지 않아 XDR 거부에는 기존 starter_not_ready를 유지하고 ruleIds로 근거를 구분합니다.
+
+차단 TTL은 경보 발생부터 15분이며 근거 경보 번호와 만료 시각을 보존합니다. 과거 fixture를 지금 실행하면 만료된 주소는 deny-rules.json에 넣지 않습니다. 운영 이벤트 수집과 Jev 호출, 배포, 심판 판정은 미검증입니다. 로컬 검증: node --test test/brute-force.test.mjs. 기존 자료실은 5단계이고 발급자·허용 경로·원본 API·judgeIssuer 설정은 변경하지 않았습니다. 화면에서는 기존 자료실 로그인/CRUD를 그대로 확인합니다. 이 XDR 시험은 CLI에서 실행합니다.
+
+시험 결과: 경보 28건/추출 28행, block 10·alert 9·record 9, 정상 이벤트 block 0. XDR 및 기존 소유자 모의 테스트 총 6건 통과.

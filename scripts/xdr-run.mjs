@@ -29,6 +29,8 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
   if (typeof loaded.decide !== 'function') throw new Error('decide 함수를 내보내지 않았습니다.');
 
   const decisions = [];
+  const blockRules = [];
+  const connection = moduleKey === 'brute-force' ? await import(pathToFileURL(join(root, 'xdr/brute-force/connect.mjs')).href) : null;
   const counts = { block: 0, alert: 0, record: 0 };
   for (const alert of fixture.alerts) {
     const alertId = alert && typeof alert.id === 'string' ? alert.id : '';
@@ -47,10 +49,17 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     } catch {
       writeError(`형식 오류: ${alertId || '(id 없음)'}`);
     }
+    if (connection) {
+      const decision = { action, confidence, reason };
+      await connection.logDecision(alert, decision);
+      const rule = connection.makeRule(alert, decision);
+      if (rule) blockRules.push(rule);
+    }
     decisions.push({ alertId, action, confidence, reason });
     counts[action] += 1;
   }
 
+  if (connection) await connection.persistRules(blockRules);
   const result = { schema: 'aleph.xdr.result.v1', moduleKey, decisions, counts };
   const outDir = join(root, 'xdr', moduleKey);
   await mkdir(outDir, { recursive: true });
