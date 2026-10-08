@@ -1,6 +1,16 @@
-import { readFile } from 'node:fs/promises';
-import { extract } from './read-alerts.mjs';
-const patterns = JSON.parse(await readFile(new URL('./patterns.json', import.meta.url), 'utf8'));
+// Standalone decision entry point: no filesystem/import-time dependency in judge sandboxes.
+function extract(alert) {
+  const d = typeof alert?.rule?.description === 'string' ? alert.rule.description : '';
+  const ip = alert?.data?.srcip;
+  return { timestamp: alert?.timestamp, sourceIp: typeof ip === 'string' && ip.length <= 45 ? ip : null,
+    account: /^user[0-9]{1,6}$/.test(alert?.data?.srcuser ?? '') ? alert.data.srcuser : '[redacted]',
+    level: Number(alert?.rule?.level) || 0,
+    description: /(?:password|token|secret|비밀번호)\s*[:=]|sb_secret_|eyJ[A-Za-z0-9_-]+\./i.test(d) ? '[redacted]' : d.slice(0,500) };
+}
+const patterns = [
+  { name: 'password-guessing', evidence: 'MITRE ATT&CK T1110.001 repeated password guesses' },
+  { name: 'password-spraying', evidence: 'MITRE ATT&CK T1110.003 one password across accounts' },
+];
 let jev = null;
 // Inject an authorized Jev adapter; no guessed endpoint or credentials.
 export function configureJev(adapter) { jev = typeof adapter === 'function' ? adapter : null; }
@@ -26,10 +36,15 @@ export async function decide(alert) {
   if (safe.level <= 3 && /성공|유지|로그아웃|화면/.test(d)) return result(.05, 'normal-event');
   const name = multi ? spraying : guessing;
   // Only ambiguous alerts reach Jev, with sanitized fields and a strict timeout.
-  if (!jev) return result(.5, name);
+  let adapter = jev;
+  if (!adapter && typeof process !== 'undefined' && process.env?.TYPESAFE_API_KEY) {
+    const { evaluateAmbiguous } = await import('./jev.mjs');
+    adapter = evaluateAmbiguous;
+  }
+  if (!adapter) return result(.5, name);
   let timer;
   try {
-    const response = await Promise.race([Promise.resolve().then(() => jev({ alert: safe, patterns })), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), 1500); })]);
+    const response = await Promise.race([Promise.resolve().then(() => adapter({ alert: safe, patterns })), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), 1500); })]);
     const confidence = response?.confidence;
     if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) return result(.5, name);
     // An ambiguous model response alone never authorizes an IP block.

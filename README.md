@@ -124,3 +124,7 @@ originalApiUrl은 쿼리 없는 HTTPS 원본 경로 https://hzovkgmggfqoumxwbejm
 ### xdr-01 심판 오류 보완
 
 X01_CLEAR_NOT_BLOCKED 이후 명확한 실패 판단의 특정 한국어 문구 의존을 제거했습니다. T1110 분류·수준 10 이상·상관 실패 20건 이상·유효 IP/시각으로 판단하며 표준 Wazuh mitre.id 배열도 받습니다. 임계값은 학습용이며 운영 튜닝이 필요합니다. 공개 fixture는 여전히 10/9/9로, 심판 비공개 정답표는 확인할 수 없습니다. 문구가 다른 고수준 실패와 낮은 횟수 경보의 회귀 시험을 추가했습니다.
+
+### xdr-01 독립 실행 보완
+
+판정 입구에서 파일 읽기·Node 모듈·최상위 await 의존성을 제거했습니다. 의존 파일 없는 격리 실행에서도 명확한 공격을 판단합니다. Jev는 TypeSafe System One 모델입니다. 공식 HTTP API의 jev.mjs를 추가했으며 서버의 TYPESAFE_API_KEY가 있을 때만 애매한 경보를 전송합니다. 키 없음/통신 실패는 alert입니다. 실제 API는 미호출이며 첨부 TypeSafe 스킬과 공식 API·문서 목록을 읽어 적용했습니다.

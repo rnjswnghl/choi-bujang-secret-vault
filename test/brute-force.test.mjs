@@ -45,3 +45,11 @@ test('correlated high-severity failures do not require specific Korean wording',
     assert.equal((await decide(alert)).action, 'alert');
   }
 });
+
+test('standalone judge entry works without sibling files', async () => {
+  const code = await readFile(new URL('../xdr/brute-force/decide.mjs', import.meta.url), 'utf8');
+  const entry = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
+  const counts = { block: 0, alert: 0, record: 0 };
+  for (const alert of fixture.alerts) counts[(await entry.decide(alert)).action]++;
+  assert.deepEqual(counts, { block: 10, alert: 9, record: 9 });
+});

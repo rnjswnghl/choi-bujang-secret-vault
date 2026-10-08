@@ -30,7 +30,11 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
 
   const decisions = [];
   const blockRules = [];
-  const connection = moduleKey === 'brute-force' ? await import(pathToFileURL(join(root, 'xdr/brute-force/connect.mjs')).href) : null;
+  let connection = null;
+  if (moduleKey === 'brute-force') {
+    try { connection = await import(pathToFileURL(join(root, 'xdr/brute-force/connect.mjs')).href); }
+    catch (error) { if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error; }
+  }
   const counts = { block: 0, alert: 0, record: 0 };
   for (const alert of fixture.alerts) {
     const alertId = alert && typeof alert.id === 'string' ? alert.id : '';
