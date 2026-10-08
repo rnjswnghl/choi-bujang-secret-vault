@@ -31,8 +31,8 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
   const decisions = [];
   const blockRules = [];
   let connection = null;
-  if (moduleKey === 'brute-force') {
-    try { connection = await import(pathToFileURL(join(root, 'xdr/brute-force/connect.mjs')).href); }
+  if (['brute-force','web-injection'].includes(moduleKey)) {
+    try { connection = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'connect.mjs')).href); }
     catch (error) { if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error; }
   }
   const counts = { block: 0, alert: 0, record: 0 };

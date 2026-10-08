@@ -1,4 +1,5 @@
 import { decide as baseDecide } from './decider.mjs';
-import { createGuard, loadRules } from '../xdr/brute-force/connect.mjs';
-// Optional gateway entry point. Original request contract and base rules remain intact.
-export const decideWithXdr = createGuard(baseDecide, loadRules);
+import { createGuard, loadRules as loadBruteForce } from '../xdr/brute-force/connect.mjs';
+import { loadRules as loadWebInjection } from '../xdr/web-injection/connect.mjs';
+// Trusted gateway sourceIp only; base rules and original request contract remain intact.
+export const decideWithXdr = createGuard(baseDecide, async () => [...await loadBruteForce(), ...await loadWebInjection()]);
