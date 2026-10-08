@@ -120,3 +120,7 @@ originalApiUrl은 쿼리 없는 HTTPS 원본 경로 https://hzovkgmggfqoumxwbejm
 차단 TTL은 경보 발생부터 15분이며 근거 경보 번호와 만료 시각을 보존합니다. 과거 fixture를 지금 실행하면 만료된 주소는 deny-rules.json에 넣지 않습니다. 운영 이벤트 수집과 Jev 호출, 배포, 심판 판정은 미검증입니다. 로컬 검증: node --test test/brute-force.test.mjs. 기존 자료실은 5단계이고 발급자·허용 경로·원본 API·judgeIssuer 설정은 변경하지 않았습니다. 화면에서는 기존 자료실 로그인/CRUD를 그대로 확인합니다. 이 XDR 시험은 CLI에서 실행합니다.
 
 시험 결과: 경보 28건/추출 28행, block 10·alert 9·record 9, 정상 이벤트 block 0. XDR 및 기존 소유자 모의 테스트 총 6건 통과.
+
+### xdr-01 심판 오류 보완
+
+X01_CLEAR_NOT_BLOCKED 이후 명확한 실패 판단의 특정 한국어 문구 의존을 제거했습니다. T1110 분류·수준 10 이상·상관 실패 20건 이상·유효 IP/시각으로 판단하며 표준 Wazuh mitre.id 배열도 받습니다. 임계값은 학습용이며 운영 튜닝이 필요합니다. 공개 fixture는 여전히 10/9/9로, 심판 비공개 정답표는 확인할 수 없습니다. 문구가 다른 고수준 실패와 낮은 횟수 경보의 회귀 시험을 추가했습니다.

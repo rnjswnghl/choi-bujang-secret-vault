@@ -1,7 +1,7 @@
 [
   {
     "name": "password-guessing",
-    "condition": "로그인 실패 30건 이상과 수준 10 이상; 짧은 시간 또는 반복 추측 증거가 있으면 높은 확신도",
+    "condition": "상관분석된 로그인 실패 20건 이상과 수준 10 이상, T1110 분류 및 유효한 출발 주소·시각",
     "evidence": "MITRE ATT&CK T1110.001: 반복적인 비밀번호 추측",
     "source": "https://attack.mitre.org/techniques/T1110/001/"
   },

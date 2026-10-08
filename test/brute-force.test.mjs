@@ -33,3 +33,15 @@ test('trusted IP guard blocks only active attack and preserves base decisions', 
   assert.deepEqual(await guard({ requestId: 'test', sourceIp: alert.data.srcip }), baseline);
   assert.deepEqual(await guard({ requestId: 'test' }, { sourceIp: alert.data.srcip, now: at + 900000 }), baseline);
 });
+
+test('correlated high-severity failures do not require specific Korean wording', async () => {
+  for (const description of ['같은 주소에서 로그인 실패 25건을 탐지했습니다.', 'Repeated authentication failures detected']) {
+    const alert = structuredClone(fixture.alerts[0]);
+    alert.rule.description = description;
+    alert.data.count = '25';
+    alert.rule.mitre = { id: ['T1110.001'] };
+    assert.equal((await decide(alert)).action, 'block');
+    alert.data.count = '4';
+    assert.equal((await decide(alert)).action, 'alert');
+  }
+});

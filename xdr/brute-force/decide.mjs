@@ -9,18 +9,19 @@ export async function decide(alert) {
   const safe = extract(alert);
   const d = safe.description;
   const count = Number(alert?.data?.count);
-  const tagged = Array.isArray(alert?.rule?.mitre) && alert.rule.mitre.some(x => /^T1110(?:\.|$)/.test(x));
+  const mitre = Array.isArray(alert?.rule?.mitre) ? alert.rule.mitre : alert?.rule?.mitre?.id ?? [];
+  const tagged = Array.isArray(mitre) && mitre.some(x => typeof x === 'string' && /^T1110(?:\.|$)/.test(x));
   if (!tagged && safe.level <= 3) return result(.05, 'normal-event');
   const guessing = patterns.find(p => p.name === 'password-guessing').name;
   const spraying = patterns.find(p => p.name === 'password-spraying').name;
-  const multi = /여러 계정|서로 다른 계정|계정\s*\d+개|계정 이름을 바꿔/.test(d);
-  const spray = multi && /같은 비밀번호|같은 간격/.test(d);
+  const multi = /여러 계정|서로 다른 계정|계정\s*\d+개|계정 이름을 바꿔|multiple (?:accounts|users)|password spray/i.test(d);
+  const spray = multi && /같은 비밀번호|같은 간격|same password|password spray/i.test(d);
   const accounts = String(alert?.data?.accounts ?? '').split(',').filter(x => /^user\d+$/.test(x));
-  const shortWindow = /[123]분/.test(d);
-  const repeated = /한 글자씩|이어졌|성공은 없/.test(d);
   if (tagged && safe.sourceIp && safe.timestamp && safe.level >= 10) {
     if (spray && (new Set(accounts).size >= 5 || count >= 10)) return result(.96, spraying);
-    if (count >= 30 && /실패/.test(d) && (shortWindow || repeated)) return result(.95, guessing);
+    // Correlated Wazuh failure count and severity are evidence; wording is not a prerequisite.
+    const failure = /실패|fail(?:ed|ure)?|invalid password|authentication error|brute.?force/i.test(d);
+    if (Number.isInteger(count) && count >= 20 && failure) return result(.95, guessing);
   }
   if (safe.level <= 3 && /성공|유지|로그아웃|화면/.test(d)) return result(.05, 'normal-event');
   const name = multi ? spraying : guessing;
