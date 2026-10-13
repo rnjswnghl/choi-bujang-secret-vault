@@ -18,6 +18,7 @@ export default async function handler(req, res) {
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const id = req.query?.id;
     if (id !== undefined && (typeof id !== 'string' || !UUID.test(id))) return res.status(400).json({ error: 'UUID가 필요합니다.' });
+    res.setHeader('X-Resource-Id', id ? `notes:${id}` : 'notes:own-list');
     const table = () => db.from('vault_notes');
     const fields = 'id,title,body:content';
     if (req.query && Object.keys(req.query).some(key => key !== 'id')) return res.status(400).json({ error: '허용하지 않는 요청 값입니다.' });

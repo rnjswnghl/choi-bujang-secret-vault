@@ -154,3 +154,13 @@ X01_CLEAR_NOT_BLOCKED 이후 명확한 실패 판단의 특정 한국어 문구 
 가상 신호는 foreign 지역, unusual 네트워크, 23~05시, 최근 300초 이내 risk_signal 10건 이상 중 둘 이상 겹칠 때 step_up·step_up_required입니다. 지역 하나만으로 영구 차단하지 않습니다. verified true 및 정수 authAgeSeconds 0~900의 엔진 검증 가상 재인증 뒤에는 기존 읽기 허용 규칙으로 다시 판정합니다. 미등록은 재인증 여부와 관계없이 거부됩니다. 응답 다섯 항목·기존 XDR·브라우저·DB·API를 보존했습니다.
 
 확인: npm run decider:test → 등록 정상 allow, 미등록 deny, 복합 이상 step_up, 재확인 복합 allow. npm run fixture:7 → 정상 allow, 복합 이상 step_up. node --test test/step7-context.test.mjs → 출처 위조·누락·재인증 만료·지역 단독 검증. 이는 가상 시험입니다. stepUp 전달 계약은 있으나 저장소에 제공 엔진의 실제 새 로그인 시각 검증·릴레이 구현이 없으므로 실제 추가 확인 전 자료 차단과 재로그인 후 허용 실측은 미실행입니다. 기존 사이트는 그대로이며 제공 엔진이 연결된 환경에서만 실제 재로그인 확인을 시험해야 합니다.
+
+## 8단계 저장점 · 자료마다 갈 수 있는 구역을 나눕니다
+
+7단계 기록과 마지막 커밋이 일치하고 작업 트리는 깨끗했습니다. 자원 ID는 notes:<UUID>, notes:own-list, notices:<UUID>로 서버 응답 헤더에서 구분합니다. 화면·기존 메모 데이터·API 주소는 보존했습니다. 메모 API의 owner_id 필터와 소유자 변경 차단도 유지했습니다.
+
+resource_scoped 규칙은 엔진 subjectId·deviceId·service·method·route·정확한 path를 서버 자원 연결표와 비교합니다. 쿼리가 있는 요청·알 수 없는 경로·기능 이름 경로는 허용하지 않습니다. 기본 연결은 이전 로컬 연습의 learner_fixture/등록 기기/notes demo 하나뿐입니다. 실제 등록부는 서버 환경변수 ALEPH_RESOURCE_BINDINGS의 JSON 배열로 운영자가 확인한 subjectId, deviceId, service, path, resourceId, permissions를 배정해야 합니다. 공지 PUT에는 서버 연결의 instructor:true도 필요합니다. 브라우저 role은 사용하지 않습니다. 기기·추가 확인 규칙은 먼저 적용합니다. 기존 임의의 notes 읽기 허용은 정확한 배정 자원으로 좁혔습니다.
+
+API /api/notices/:id는 검증된 Supabase 사용자 UUID를 DB vault_instructors와 비교합니다. 권한이 없거나 DB 권한 조회에 실패하면 403입니다. 학습 SQL sql/step8-notices.sql은 검토용이며 실행하지 않았습니다. 기존 테이블은 바꾸지 않고 별도 공지·강사 권한 테이블만 준비합니다. 실제 강사 배정·공지 생성·엔진 subject 연결은 미실행이며 임의로 만들지 않았습니다. 따라서 실제 강사 정상 수정과 엔진 A/B 구역 실측은 미검증입니다. 공지 경로와 자원 연결부는 준비됐지만 실제 환경 등록 없이는 기본 거부입니다.
+
+확인: npm run decider:test, npm run fixture:7, node --test test/step8-resource.test.mjs test/step4-owner.test.mjs. 본인 연습 메모 GET/PUT 허용, 다른 주체·기기·목록·export 경로·학생 공지 수정 거부를 확인합니다. 웹에서는 기존 자기 메모 CRUD를 그대로 사용합니다. 실제 구역 배정은 제공 엔진의 검증된 subjectId 등록부가 준비된 환경에서만 가능합니다.

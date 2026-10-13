@@ -19,5 +19,5 @@ test('device registration does not grant other actions or services', async () =>
   for (const change of [{method:'POST'},{service:'other'},{path:'/other'},{route:'GET /other'}]) {
     assert.equal((await decide({...normal,...change})).decision,'deny');
   }
-  assert.equal((await decide({...normal,path:'/notes',route:'GET /notes'})).decision,'allow');
+  assert.equal((await decide({...normal,path:'/notes',route:'GET /notes'})).decision,'deny');
 });
