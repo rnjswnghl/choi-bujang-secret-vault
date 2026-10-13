@@ -11,7 +11,23 @@ export default async function handler(req, res) {
     if (!key || url!=='https://hzovkgmggfqoumxwbejm.supabase.co') return res.status(503).json({error:'서버 자료 설정이 필요합니다.'});
     const user=await createLoginVerifier({config,supabaseSecretKey:key})(authorization);
     if (!user) return res.status(401).json({error:'로그인 인증에 실패했습니다.'});
-    const id=req.query?.id;
+    let id = req.query?.id;
+    // Node function query objects need not contain filesystem route parameters.
+    // A URL carrying an ID must never fall back to the collection operation.
+    if (typeof req.url === 'string') {
+      const rawPath = req.url.split('?')[0];
+      if (rawPath.includes('%') || rawPath.includes('..') || rawPath.includes('\\')) return res.status(404).json({error:'자원 경로가 없습니다.'});
+      let target;
+      try { target = new URL(req.url, 'https://local-request.invalid'); }
+      catch { return res.status(400).json({error:'요청 주소를 확인하세요.'}); }
+      const match = /^\/api\/notices(?:\/([^/]+))?\/?$/.exec(target.pathname);
+      if (!match) return res.status(404).json({error:'자원 경로가 없습니다.'});
+      if ([...target.searchParams.keys()].some(key => key !== 'id') || target.searchParams.getAll('id').length > 1) return res.status(400).json({error:'허용하지 않는 요청 값입니다.'});
+      const candidates = [match[1], id, target.searchParams.get('id') ?? undefined].filter(value => value !== undefined);
+      if (candidates.some(value => typeof value !== 'string') || candidates.some(value => value.toLowerCase() !== candidates[0].toLowerCase())) return res.status(400).json({error:'자원 번호가 일치하지 않습니다.'});
+      id = candidates[0];
+    }
+
     if (typeof id!=='string' || !UUID.test(id) || Object.keys(req.query??{}).some(k=>k!=='id')) return res.status(400).json({error:'공지 ID를 확인하세요.'});
     res.setHeader('X-Resource-Id',`notices:${id}`);
     if (!['GET','PUT'].includes(req.method)) return res.status(405).json({error:'허용하지 않는 요청입니다.'});

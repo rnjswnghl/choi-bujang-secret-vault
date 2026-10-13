@@ -13,5 +13,15 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/notes/:id",
+      "destination": "/api/notes?id=:id"
+    },
+    {
+      "source": "/api/notices/:id",
+      "destination": "/api/notices?id=:id"
+    }
   ]
 }

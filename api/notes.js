@@ -16,7 +16,23 @@ export default async function handler(req, res) {
     const user = await verify(authorization);
     if (!user) return res.status(401).json({ error: '로그인 인증에 실패했습니다.' });
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    const id = req.query?.id;
+    let id = req.query?.id;
+    // Node function query objects need not contain filesystem route parameters.
+    // A URL carrying an ID must never fall back to the collection operation.
+    if (typeof req.url === 'string') {
+      const rawPath = req.url.split('?')[0];
+      if (rawPath.includes('%') || rawPath.includes('..') || rawPath.includes('\\')) return res.status(404).json({error:'자원 경로가 없습니다.'});
+      let target;
+      try { target = new URL(req.url, 'https://local-request.invalid'); }
+      catch { return res.status(400).json({error:'요청 주소를 확인하세요.'}); }
+      const match = /^\/api\/notes(?:\/([^/]+))?\/?$/.exec(target.pathname);
+      if (!match) return res.status(404).json({error:'자원 경로가 없습니다.'});
+      if ([...target.searchParams.keys()].some(key => key !== 'id') || target.searchParams.getAll('id').length > 1) return res.status(400).json({error:'허용하지 않는 요청 값입니다.'});
+      const candidates = [match[1], id, target.searchParams.get('id') ?? undefined].filter(value => value !== undefined);
+      if (candidates.some(value => typeof value !== 'string') || candidates.some(value => value.toLowerCase() !== candidates[0].toLowerCase())) return res.status(400).json({error:'자원 번호가 일치하지 않습니다.'});
+      id = candidates[0];
+    }
+
     if (id !== undefined && (typeof id !== 'string' || !UUID.test(id))) return res.status(400).json({ error: 'UUID가 필요합니다.' });
     res.setHeader('X-Resource-Id', id ? `notes:${id}` : 'notes:own-list');
     const table = () => db.from('vault_notes');
@@ -32,7 +48,7 @@ export default async function handler(req, res) {
         && row.owner_id.toLowerCase() === user.userId.toLowerCase();
       const publicNote = row => ({id:row.id,title:row.title,body:row.body});
       if (id) {
-        if (!own(data)) return res.status(404).json({error:'메모가 없습니다.'});
+        if (!own(data) || typeof data.id !== 'string' || data.id.toLowerCase() !== id.toLowerCase()) return res.status(404).json({error:'메모가 없습니다.'});
         return res.status(200).json(publicNote(data));
       }
       if (!Array.isArray(data)) return res.status(502).json({error:'자료 형식이 올바르지 않습니다.'});

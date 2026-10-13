@@ -188,3 +188,11 @@ S08_OTHER_ZONE_ALLOWED는 로컬·독립 판정·API 재현에서 아직 발생�
 구역 거부 응답에서 시작 틀의 starter_not_ready를 제거하고 deny·resource_not_allowed·resource_scope로 구역 권한 거부를 명시했습니다. 엔진 주체/반/프로젝트의 누락과 잘못된 기기 ID를 거부하고 자원 ID도 요청 경로와 정확히 일치해야 합니다. 더 이상 사용하지 않는 starter.deny 규칙과 resource-policy.mjs 호환 파일을 제거했습니다. 기기·추가 확인 규칙과 정상 demo 자원은 유지합니다.
 
 공지 API /api/notices/:id의 실제 Vercel 동적 파일 api/notices/[id].js를 추가했습니다. 실제 요청은 공통 notices.js로 연결돼 검증된 사용자·DB 강사 권한을 확인합니다. 미등록 학생은403이며 role 본문은 권한 근거가 아닙니다. 공지 DB SQL 미실행 상태에서는 기본 거부이며 강사 정상 동작은 DB 준비 후 시험해야 합니다. 구역 거부 사유의 운영 등록부 적합성은 심판 재판정으로 확인해야 합니다.
+
+### 8단계 단건 URL이 목록으로 바뀌는 재현 오류 수정
+
+기존 시험은 항상 req.query.id를 수동 주입했습니다. 실제 요청 형태인 GET /api/notes/<UUID>, query:{}를 그대로 넣으면 handler가 id 없음으로 판단해 본인 목록을 HTTP 200으로 반환하는 오류를 재현했습니다. 이 목록 응답은 타인 ID 요청을 성공 처리한 것이므로 허용돼서는 안 됩니다.
+
+notes.js와 notices.js가 req.url에서 정확한 단건 ID를 직접 읽도록 수정했습니다. URL·동적 query.id·쿼리 id가 충돌하거나 중복이면400, 알 수 없는 경로·추가 깊이는404입니다. 기능 경로는 UUID 검사를 통과하지 못합니다. 단건 응답은 DB의 owner_id뿐 아니라 요청 ID와 반환 id도 재비교하고 정확히 일치한 {id,title,body} 한 객체만 반환합니다. 실제 목록 경로는 기존 본인 목록을 유지합니다. 변경 전 회귀 시험에서 200 성공이 재현됐고 변경 후 거부·정상 단건 유지 시험을 통과했습니다. 운영 심판의 실제 요청 객체는 확인되지 않았으므로 심판 원인과의 동일성은 재판정으로 확인합니다.
+
+Vercel rewrite도 /api/notes/:id → /api/notes?id=:id, /api/notices/:id → /api/notices?id=:id로 명시하여 경로 번호 전달을 플랫폼의 자동 동적 query 주입에만 의존하지 않습니다. 외부 주소와 브라우저 요청 경로는 그대로입니다. 원본 URL과 전달된 번호가 함께 있으면 일치 여부를 검사합니다.
