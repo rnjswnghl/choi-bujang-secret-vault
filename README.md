@@ -172,3 +172,7 @@ API /api/notices/:id는 검증된 Supabase 사용자 UUID를 DB vault_instructor
 ### 8단계 단건 GET 응답 소유자 재검사
 
 S08_OTHER_ZONE_ALLOWED가 단건 조회에서만 계속 발생하여 GET을 집중 보완했습니다. 기존 DB owner_id 필터를 유지하면서 조회된 owner_id를 검증된 사용자와 서버에서 다시 비교하고, 불일치·소유자 누락은 단건 404로 거부합니다. 목록도 본인 행만 반환하며 owner_id는 응답에서 제외하여 기존 {id,title,body} 계약을 유지합니다. 구역 규칙 ID는 resource_scope로 통일했습니다. 실제 심판 실패 원인은 비공개 실행 로그 없이 확정할 수 없습니다.
+
+### 8단계 운영 허용표와 연습 데이터 분리
+
+등록표 미설정 시 /notes/demo를 자동 허용하던 기본 연결을 제거했습니다. 운영 자원 등록표가 없으면 모든 구역 요청을 거부합니다. 명시적 연결에는 classId·projectId·subjectId·deviceId·service·정확한 path와 permissions가 모두 일치해야 하고, 메모 ownerSubjectId도 요청 주체와 같아야 합니다. 연습용 연결표는 CLI 시험과 test/resource-bindings-fixture.mjs에서만 설정하며 서버 판정기에는 기본 시험 계정이 없습니다. 이전 README의 기본 demo 허용 설명은 이 수정 전 상태입니다. 정상 운영 허용에는 실제 엔진의 검증된 주체·소유자 연결표가 여전히 필요합니다.

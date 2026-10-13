@@ -1,10 +1,7 @@
 // Server-owned bindings only. Engine subject IDs must never be equated with Auth UUIDs.
-// The default binding reproduces the existing public local-practice fixture, not a real user.
-const fixtureBindings = [{ subjectId: 'learner_fixture', deviceId: 'aaaaaaaaaaaaaaaa',
-  service: 'notes', path: '/notes/demo', resourceId: 'notes:demo', permissions: ['GET','PUT'] }];
 function loadResourceBindings() {
   const raw = typeof process !== 'undefined' ? process.env.ALEPH_RESOURCE_BINDINGS : undefined;
-  if (!raw) return fixtureBindings;
+  if (!raw) return [];
   try { const entries = JSON.parse(raw); return Array.isArray(entries) ? entries : []; }
   catch { return []; }
 }
@@ -20,11 +17,13 @@ export function resourceAllowed(request, bindings = loadResourceBindings()) {
   const expectedRoute = request.path === '/' + family ? request.method + ' /' + family : request.method + ' /' + family + '/:id';
   if (request.route !== expectedRoute) return false;
   // Only server-provisioned exact paths qualify; export/unknown paths have no binding.
-  return bindings.some(entry => entry.subjectId === request.subjectId
+  return bindings.some(entry => entry.classId === request.classId
+    && entry.projectId === request.projectId && entry.subjectId === request.subjectId
     && entry.deviceId === request.deviceId && entry.service === request.service
     && entry.path === request.path && typeof entry.resourceId === 'string'
     && entry.resourceId.startsWith(family + ':') && Array.isArray(entry.permissions)
     && entry.permissions.includes(request.method)
+    && (family !== 'notes' || entry.ownerSubjectId === request.subjectId)
     && (family !== 'notices' || request.method !== 'PUT' || entry.instructor === true));
 }
 

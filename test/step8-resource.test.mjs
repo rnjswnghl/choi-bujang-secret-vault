@@ -1,3 +1,4 @@
+import './resource-bindings-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixtureRequests} from '../scripts/fixture-7.mjs';
@@ -12,7 +13,7 @@ test('own fixture read/update; other subject/device/list/function denied',async(
 test('notice writes require trusted instructor binding, never body role',()=>{
  const {normal}=fixtureRequests();
  const request={...normal,service:'notices',path:'/notices/demo',method:'PUT',route:'PUT /notices/:id',role:'instructor'};
- const binding={subjectId:normal.subjectId,deviceId:normal.deviceId,service:'notices',path:'/notices/demo',resourceId:'notices:demo',permissions:['PUT']};
+ const binding={classId:normal.classId,projectId:normal.projectId,subjectId:normal.subjectId,deviceId:normal.deviceId,service:'notices',path:'/notices/demo',resourceId:'notices:demo',permissions:['PUT']};
  assert.equal(resourceAllowed(request,[binding]),false);
  assert.equal(resourceAllowed(request,[{...binding,instructor:true}]),true);
  assert.equal(resourceAllowed({...request,path:'/notices/export'},[{...binding,instructor:true}]),false);
@@ -28,4 +29,18 @@ test('isolated judge execution denies every cross-zone request without imports',
  {path:'/notes',route:'GET /notes'}, {service:'notices',path:'/notices/demo',method:'PUT',route:'PUT /notices/:id',role:'instructor'},
  {path:'/notes/export'}, {path:'/notes/demo/extra'}];
  for(const change of cases){const response=await isolated.decide({...normal,...change});assert.equal(response.decision,'deny');assert.equal(response.requestId,normal.requestId);}
+});
+
+test('no registry and cross-class or wrong stored owner cannot authorize reads',async()=>{
+ const {normal}=fixtureRequests();
+ const old=process.env.ALEPH_RESOURCE_BINDINGS;
+ try{
+  delete process.env.ALEPH_RESOURCE_BINDINGS;
+  assert.equal((await decide(normal)).decision,'deny');
+  const binding=JSON.parse(old)[0];
+  for(const change of [{classId:'other-class'},{projectId:'other-project'},{ownerSubjectId:'other-owner'}]){
+   process.env.ALEPH_RESOURCE_BINDINGS=JSON.stringify([{...binding,...change}]);
+   assert.equal((await decide(normal)).decision,'deny');
+  }
+ }finally{process.env.ALEPH_RESOURCE_BINDINGS=old;}
 });
