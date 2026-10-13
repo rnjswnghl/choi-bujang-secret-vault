@@ -1,4 +1,3 @@
-import './resource-bindings-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixtureRequests} from '../scripts/fixture-7.mjs';
@@ -31,16 +30,16 @@ test('isolated judge execution denies every cross-zone request without imports',
  for(const change of cases){const response=await isolated.decide({...normal,...change});assert.equal(response.decision,'deny');assert.equal(response.requestId,normal.requestId);}
 });
 
-test('no registry and cross-class or wrong stored owner cannot authorize reads',async()=>{
+test('submitted default allows known own resource and denies other class, project, owner',async()=>{
  const {normal}=fixtureRequests();
  const old=process.env.ALEPH_RESOURCE_BINDINGS;
  try{
   delete process.env.ALEPH_RESOURCE_BINDINGS;
-  assert.equal((await decide(normal)).decision,'deny');
-  const binding=JSON.parse(old)[0];
-  for(const change of [{classId:'other-class'},{projectId:'other-project'},{ownerSubjectId:'other-owner'}]){
-   process.env.ALEPH_RESOURCE_BINDINGS=JSON.stringify([{...binding,...change}]);
-   assert.equal((await decide(normal)).decision,'deny');
+  assert.equal((await decide(normal)).decision,'allow');
+  for(const change of [{classId:'other-class'},{projectId:'other-project'},{subjectId:'other-owner'}]){
+   assert.equal((await decide({...normal,...change})).decision,'deny');
   }
- }finally{process.env.ALEPH_RESOURCE_BINDINGS=old;}
+  process.env.ALEPH_RESOURCE_BINDINGS='[]';
+  assert.equal((await decide(normal)).decision,'deny');
+ }finally{if(old===undefined)delete process.env.ALEPH_RESOURCE_BINDINGS;else process.env.ALEPH_RESOURCE_BINDINGS=old;}
 });

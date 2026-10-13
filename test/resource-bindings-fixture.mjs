@@ -1,1 +1,0 @@
-process.env.ALEPH_RESOURCE_BINDINGS = "[{\"classId\": \"class_fixture\", \"projectId\": \"project_fixture\", \"subjectId\": \"learner_fixture\", \"ownerSubjectId\": \"learner_fixture\", \"deviceId\": \"aaaaaaaaaaaaaaaa\", \"service\": \"notes\", \"path\": \"/notes/demo\", \"resourceId\": \"notes:demo\", \"permissions\": [\"GET\", \"PUT\"]}]";

@@ -1,7 +1,11 @@
-// Server-owned bindings only. Engine subject IDs must never be equated with Auth UUIDs.
+// Known starter practice resource, explicitly owned by the starter practice subject.
+// This is not a mapping from engine pseudonyms to Supabase users.
+const starterResources = [{classId:'class_fixture',projectId:'project_fixture',
+  subjectId:'learner_fixture',ownerSubjectId:'learner_fixture',deviceId:'aaaaaaaaaaaaaaaa',
+  service:'notes',path:'/notes/demo',resourceId:'notes:demo',permissions:['GET','PUT']}];
 function loadResourceBindings() {
   const raw = typeof process !== 'undefined' ? process.env.ALEPH_RESOURCE_BINDINGS : undefined;
-  if (!raw) return [];
+  if (!raw) return starterResources;
   try { const entries = JSON.parse(raw); return Array.isArray(entries) ? entries : []; }
   catch { return []; }
 }

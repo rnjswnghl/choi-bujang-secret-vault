@@ -27,8 +27,7 @@ const check = (input, output) => output && typeof output === 'object'
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const { normal, suspicious } = fixtureRequests();
-    const { decide, RULE_IDS } = await import('../src/decider.mjs');
-    if (RULE_IDS.includes('resource_scope')) process.env.ALEPH_RESOURCE_BINDINGS = JSON.stringify([{classId:normal.classId,projectId:normal.projectId,subjectId:normal.subjectId,ownerSubjectId:normal.subjectId,deviceId:normal.deviceId,service:'notes',path:normal.path,resourceId:'notes:demo',permissions:['GET','PUT']}]);
+    const { decide } = await import('../src/decider.mjs');
     if (typeof decide !== 'function') throw new Error('src/decider.mjs에서 decide 함수를 내보내야 합니다.');
     const ordinary = await decide(normal);
     const unusual = await decide(suspicious);

@@ -24,8 +24,6 @@ export async function checkDecider({ decide, ruleIds }) {
     throw new Error('6단계 device_registered 규칙을 먼저 구현하고 RULE_IDS에 적어 주세요.');
   }
   const { normal, suspicious } = fixtureRequests();
-  const previousBindings = process.env.ALEPH_RESOURCE_BINDINGS;
-  if (ruleIds.includes('resource_scope')) process.env.ALEPH_RESOURCE_BINDINGS = JSON.stringify([{classId:normal.classId,projectId:normal.projectId,subjectId:normal.subjectId,ownerSubjectId:normal.subjectId,deviceId:normal.deviceId,service:'notes',path:normal.path,resourceId:'notes:demo',permissions:['GET','PUT']}]);
   const checks = [
     { name: '등록 기기의 정상 요청', request: normal, decision: 'allow' },
     { name: '미등록 기기의 가상 요청', request: { ...normal, requestId: randomUUID(),
@@ -48,8 +46,6 @@ export async function checkDecider({ decide, ruleIds }) {
       && (!item.reasonCode || response.reasonCode === item.reasonCode);
     results.push({ name: item.name, passed: valid });
   }
-  if (previousBindings === undefined) delete process.env.ALEPH_RESOURCE_BINDINGS;
-  else process.env.ALEPH_RESOURCE_BINDINGS = previousBindings;
   return results;
 }
 

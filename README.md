@@ -176,3 +176,9 @@ S08_OTHER_ZONE_ALLOWED가 단건 조회에서만 계속 발생하여 GET을 집�
 ### 8단계 운영 허용표와 연습 데이터 분리
 
 등록표 미설정 시 /notes/demo를 자동 허용하던 기본 연결을 제거했습니다. 운영 자원 등록표가 없으면 모든 구역 요청을 거부합니다. 명시적 연결에는 classId·projectId·subjectId·deviceId·service·정확한 path와 permissions가 모두 일치해야 하고, 메모 ownerSubjectId도 요청 주체와 같아야 합니다. 연습용 연결표는 CLI 시험과 test/resource-bindings-fixture.mjs에서만 설정하며 서버 판정기에는 기본 시험 계정이 없습니다. 이전 README의 기본 demo 허용 설명은 이 수정 전 상태입니다. 정상 운영 허용에는 실제 엔진의 검증된 주체·소유자 연결표가 여전히 필요합니다.
+
+### 8단계 S08_OWN_BROKEN 복구 및 시험 조건 정정
+
+환경변수가 심판에 전달된다는 근거 없이 이를 필수로 만들고, 로컬 실행기에만 임시 연결표를 넣어 정상 통과를 보고한 것이 S08_OWN_BROKEN의 원인입니다. 임시 환경 주입과 test/resource-bindings-fixture.mjs를 제거하고 제공된 정상 learner_fixture 기기·반·프로젝트·/notes/demo의 명시적인 자원 소유 관계를 기본 정책에 복구했습니다. 이제 원본 로컬 명령을 환경 주입 없이 실행하여 정상 허용을 확인합니다. 타 주체·반·프로젝트·기기·메모·목록·학생 공지는 거부합니다.
+
+S08_OTHER_ZONE_ALLOWED는 로컬·독립 판정·API 재현에서 아직 발생하지 않았습니다. 공개 계약에는 엔진의 실제 소유자/강사 등록부가 없어 실제 자원 권한을 임의로 확장하지 않습니다. 이 오류를 정확히 재현하려면 심판이 사용한 비밀값 제외 요청의 subjectId·deviceId·classId·projectId·service·method·path·route·queryLength와 실제 판정 응답 또는 엔진의 8단계 자원 연결 계약이 필요합니다. 정상 복구와 타 구역 심판 해결 완료는 구분합니다.
