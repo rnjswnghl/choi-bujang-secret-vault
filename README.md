@@ -164,3 +164,7 @@ resource_scoped 규칙은 엔진 subjectId·deviceId·service·method·route·�
 API /api/notices/:id는 검증된 Supabase 사용자 UUID를 DB vault_instructors와 비교합니다. 권한이 없거나 DB 권한 조회에 실패하면 403입니다. 학습 SQL sql/step8-notices.sql은 검토용이며 실행하지 않았습니다. 기존 테이블은 바꾸지 않고 별도 공지·강사 권한 테이블만 준비합니다. 실제 강사 배정·공지 생성·엔진 subject 연결은 미실행이며 임의로 만들지 않았습니다. 따라서 실제 강사 정상 수정과 엔진 A/B 구역 실측은 미검증입니다. 공지 경로와 자원 연결부는 준비됐지만 실제 환경 등록 없이는 기본 거부입니다.
 
 확인: npm run decider:test, npm run fixture:7, node --test test/step8-resource.test.mjs test/step4-owner.test.mjs. 본인 연습 메모 GET/PUT 허용, 다른 주체·기기·목록·export 경로·학생 공지 수정 거부를 확인합니다. 웹에서는 기존 자기 메모 CRUD를 그대로 사용합니다. 실제 구역 배정은 제공 엔진의 검증된 subjectId 등록부가 준비된 환경에서만 가능합니다.
+
+### 8단계 S08_OTHER_ZONE_ALLOWED 보완
+
+구역 검사의 외부 import 의존성을 제거하고 구현을 src/decider.mjs에 포함했습니다. 이전 resource-policy.mjs는 같은 구현을 다시 내보내는 호환 파일입니다. 경로는 자원 구역 접두사까지 정확하게 검사합니다. 판정 파일만 독립 실행하여 정상 연습 메모 allow 및 타 사용자·다른 메모·다른 목록·학생 공지 PUT·기능 경로·추가 깊이 거부를 시험합니다. 실제 심판 원인은 실행 로그가 없어 확정하지 않았으며 실제 사용자 등록부와 강사 DB 준비 한계는 이전과 같습니다.
