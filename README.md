@@ -146,3 +146,11 @@ X01_CLEAR_NOT_BLOCKED 이후 명확한 실패 판단의 특정 한국어 문구 
 등록 여부가 정확히 true인 notes 서비스의 GET /notes 또는 GET /notes/:id 읽기만 allow·approved입니다. 미등록·누락·잘못된 타입은 deny·device_not_registered입니다. 읽기 범위 밖에는 기존 starter.deny 거부를 유지했습니다. 응답 다섯 항목과 기존 XDR 연결·API·화면·DB는 보존했습니다. 단계만 6으로 올리고 발급자·허용 API 경로·원본 API·judgeIssuer는 유지했습니다. 새 인증서·CA·개인키를 만들지 않았고 별도 접속 프로그램 설치도 없습니다.
 
 확인 순서: npm run decider:test 실행 → 등록 기기의 정상 요청 통과 → 미등록 기기의 가상 요청 통과(deny·device_not_registered) 확인. 이어 node --test test/step6-device.test.mjs로 누락·문자열·읽기 외 요청 거부를 확인합니다. 이 결과는 가상 요청의 로컬 시험이며 심판의 mTLS·미등록 기기 공격 통과 증거가 아닙니다. 실제 등록 기기의 화면 열기와 심판의 공격 판정은 제출 후 확인해야 합니다. 기존 웹 화면에서 로그인과 자기 메모 읽기를 확인하세요.
+
+## 7단계 저장점 · 평소와 다른 접속은 다시 확인합니다
+
+6단계 기록과 마지막 커밋이 일치했고 작업 트리는 깨끗했습니다. 기존 기기 규칙을 유지하고 step_up_required 규칙을 추가했습니다. 입력은 계약의 signals·recentEvents·stepUp만 사용하며 클라이언트 헤더·토큰 원문을 읽거나 기록하지 않습니다. judge_fixture 출처에서 local/foreign, usual/unusual, 0~23의 정수 시각 및 사건 배열을 검사합니다. 누락·불명확한 출처·잘못된 값은 정상값으로 보정하지 않고 step_up으로 보냅니다. 실제 source none/region unknown/network unknown은 위치 정보 미제공으로 구분하고 가상 위치 규칙을 적용하지 않습니다.
+
+가상 신호는 foreign 지역, unusual 네트워크, 23~05시, 최근 300초 이내 risk_signal 10건 이상 중 둘 이상 겹칠 때 step_up·step_up_required입니다. 지역 하나만으로 영구 차단하지 않습니다. verified true 및 정수 authAgeSeconds 0~900의 엔진 검증 가상 재인증 뒤에는 기존 읽기 허용 규칙으로 다시 판정합니다. 미등록은 재인증 여부와 관계없이 거부됩니다. 응답 다섯 항목·기존 XDR·브라우저·DB·API를 보존했습니다.
+
+확인: npm run decider:test → 등록 정상 allow, 미등록 deny, 복합 이상 step_up, 재확인 복합 allow. npm run fixture:7 → 정상 allow, 복합 이상 step_up. node --test test/step7-context.test.mjs → 출처 위조·누락·재인증 만료·지역 단독 검증. 이는 가상 시험입니다. stepUp 전달 계약은 있으나 저장소에 제공 엔진의 실제 새 로그인 시각 검증·릴레이 구현이 없으므로 실제 추가 확인 전 자료 차단과 재로그인 후 허용 실측은 미실행입니다. 기존 사이트는 그대로이며 제공 엔진이 연결된 환경에서만 실제 재로그인 확인을 시험해야 합니다.
