@@ -168,3 +168,7 @@ API /api/notices/:id는 검증된 Supabase 사용자 UUID를 DB vault_instructor
 ### 8단계 S08_OTHER_ZONE_ALLOWED 보완
 
 구역 검사의 외부 import 의존성을 제거하고 구현을 src/decider.mjs에 포함했습니다. 이전 resource-policy.mjs는 같은 구현을 다시 내보내는 호환 파일입니다. 경로는 자원 구역 접두사까지 정확하게 검사합니다. 판정 파일만 독립 실행하여 정상 연습 메모 allow 및 타 사용자·다른 메모·다른 목록·학생 공지 PUT·기능 경로·추가 깊이 거부를 시험합니다. 실제 심판 원인은 실행 로그가 없어 확정하지 않았으며 실제 사용자 등록부와 강사 DB 준비 한계는 이전과 같습니다.
+
+### 8단계 단건 GET 응답 소유자 재검사
+
+S08_OTHER_ZONE_ALLOWED가 단건 조회에서만 계속 발생하여 GET을 집중 보완했습니다. 기존 DB owner_id 필터를 유지하면서 조회된 owner_id를 검증된 사용자와 서버에서 다시 비교하고, 불일치·소유자 누락은 단건 404로 거부합니다. 목록도 본인 행만 반환하며 owner_id는 응답에서 제외하여 기존 {id,title,body} 계약을 유지합니다. 구역 규칙 ID는 resource_scope로 통일했습니다. 실제 심판 실패 원인은 비공개 실행 로그 없이 확정할 수 없습니다.

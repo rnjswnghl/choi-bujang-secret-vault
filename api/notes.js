@@ -23,11 +23,20 @@ export default async function handler(req, res) {
     const fields = 'id,title,body:content';
     if (req.query && Object.keys(req.query).some(key => key !== 'id')) return res.status(400).json({ error: '허용하지 않는 요청 값입니다.' });
     if (req.method === 'GET') {
-      const query = id ? table().select(fields).eq('id', id).eq('owner_id', user.userId).maybeSingle() : table().select(fields).eq('owner_id', user.userId).order('id');
+      const readFields = 'id,title,body:content,owner_id';
+      const query = id ? table().select(readFields).eq('id', id).eq('owner_id', user.userId).maybeSingle() : table().select(readFields).eq('owner_id', user.userId).order('id');
       const { data, error } = await query;
       if (error) return res.status(502).json({ error: '자료를 읽을 수 없습니다.' });
-      if (id && !data) return res.status(404).json({ error: '메모가 없습니다.' });
-      return res.status(200).json(data);
+      // Verify the returned stored owner again before exposing any read result.
+      const own = row => row && typeof row.owner_id === 'string'
+        && row.owner_id.toLowerCase() === user.userId.toLowerCase();
+      const publicNote = row => ({id:row.id,title:row.title,body:row.body});
+      if (id) {
+        if (!own(data)) return res.status(404).json({error:'메모가 없습니다.'});
+        return res.status(200).json(publicNote(data));
+      }
+      if (!Array.isArray(data)) return res.status(502).json({error:'자료 형식이 올바르지 않습니다.'});
+      return res.status(200).json(data.filter(own).map(publicNote));
     }
     if (req.method === 'POST' || req.method === 'PUT') {
       let body = req.body;

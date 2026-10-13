@@ -29,7 +29,7 @@ export function resourceAllowed(request, bindings = loadResourceBindings()) {
 }
 
 // Only trusted ALEPH engine requests under docs/DECIDER_REQUEST.md belong here.
-export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'step_up_required', 'resource_scoped']);
+export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'step_up_required', 'resource_scope']);
 
 export async function decide(request) {
   const response = (decision, reasonCode, ruleId) => ({
@@ -68,6 +68,6 @@ export async function decide(request) {
   if (riskCount >= 2 && !verified) {
     return response('step_up', 'step_up_required', 'step_up_required');
   }
-  if (resourceAllowed(request)) return response('allow', 'approved', 'resource_scoped');
-  return response('deny', 'starter_not_ready', 'resource_scoped');
+  if (resourceAllowed(request)) return response('allow', 'approved', 'resource_scope');
+  return response('deny', 'starter_not_ready', 'resource_scope');
 }

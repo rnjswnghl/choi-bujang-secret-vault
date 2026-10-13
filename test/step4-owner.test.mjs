@@ -21,7 +21,7 @@ function setup(userId) {
         if (mode === 'insert') { rows.push(values); return Promise.resolve({error:null}).then(resolve); }
         const selected = rows.filter(row => filters.every(([k,v]) => row[k] === v));
         if (mode === 'update') selected.forEach(row => Object.assign(row,values));
-        const data = selected.map(row => ({id:row.id,title:row.title,body:row.content}));
+        const data = selected.map(row => ({id:row.id,title:row.title,body:row.content,owner_id:row.owner_id}));
         if (mode === 'delete') for (const row of selected) rows.splice(rows.indexOf(row),1);
         return Promise.resolve({data:single ? data[0] ?? null : data,error:null}).then(resolve);
       },
