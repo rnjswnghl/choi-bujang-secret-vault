@@ -10,6 +10,11 @@ function loadResourceBindings() {
   catch { return []; }
 }
 export function resourceAllowed(request, bindings = loadResourceBindings()) {
+  // User identity and device are engine-verified contract fields, not body role claims.
+  if (request.schema !== 'aleph.decision.v1' || !['classId','projectId','subjectId'].every(key =>
+    typeof request[key] === 'string' && request[key].length > 0 && request[key].length <= 256)
+    || !/^[a-f0-9]{16}$/.test(request.deviceId ?? '')) return false;
+
   if (request.queryLength !== 0 || !['GET','PUT'].includes(request.method)) return false;
   if (typeof request.path !== 'string' || /[%?#\\]/.test(request.path)) return false;
   const family = request.service === 'notes' ? 'notes' : request.service === 'notices' ? 'notices' : null;
@@ -25,14 +30,15 @@ export function resourceAllowed(request, bindings = loadResourceBindings()) {
     && entry.projectId === request.projectId && entry.subjectId === request.subjectId
     && entry.deviceId === request.deviceId && entry.service === request.service
     && entry.path === request.path && typeof entry.resourceId === 'string'
-    && entry.resourceId.startsWith(family + ':') && Array.isArray(entry.permissions)
+    && entry.resourceId === (request.path === '/' + family ? family + ':own-list' : family + ':' + resourcePart)
+    && Array.isArray(entry.permissions)
     && entry.permissions.includes(request.method)
     && (family !== 'notes' || entry.ownerSubjectId === request.subjectId)
     && (family !== 'notices' || request.method !== 'PUT' || entry.instructor === true));
 }
 
 // Only trusted ALEPH engine requests under docs/DECIDER_REQUEST.md belong here.
-export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'step_up_required', 'resource_scope']);
+export const RULE_IDS = Object.freeze(['device_registered', 'step_up_required', 'resource_scope']);
 
 export async function decide(request) {
   const response = (decision, reasonCode, ruleId) => ({
@@ -72,5 +78,5 @@ export async function decide(request) {
     return response('step_up', 'step_up_required', 'step_up_required');
   }
   if (resourceAllowed(request)) return response('allow', 'approved', 'resource_scope');
-  return response('deny', 'starter_not_ready', 'resource_scope');
+  return response('deny', 'resource_not_allowed', 'resource_scope');
 }

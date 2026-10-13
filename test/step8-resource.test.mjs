@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixtureRequests} from '../scripts/fixture-7.mjs';
 import {decide} from '../src/decider.mjs';
-import {resourceAllowed} from '../src/resource-policy.mjs';
+import {resourceAllowed} from '../src/decider.mjs';
 test('own fixture read/update; other subject/device/list/function denied',async()=>{
  const {normal}=fixtureRequests();
  assert.equal((await decide(normal)).decision,'allow');
@@ -27,7 +27,7 @@ test('isolated judge execution denies every cross-zone request without imports',
  const cases=[{subjectId:'other-user'}, {path:'/notes/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'},
  {path:'/notes',route:'GET /notes'}, {service:'notices',path:'/notices/demo',method:'PUT',route:'PUT /notices/:id',role:'instructor'},
  {path:'/notes/export'}, {path:'/notes/demo/extra'}];
- for(const change of cases){const response=await isolated.decide({...normal,...change});assert.equal(response.decision,'deny');assert.equal(response.requestId,normal.requestId);}
+ for(const change of cases){const response=await isolated.decide({...normal,...change});assert.equal(response.decision,'deny');assert.equal(response.reasonCode,'resource_not_allowed');assert.equal(response.requestId,normal.requestId);}
 });
 
 test('submitted default allows known own resource and denies other class, project, owner',async()=>{
@@ -42,4 +42,12 @@ test('submitted default allows known own resource and denies other class, projec
   process.env.ALEPH_RESOURCE_BINDINGS='[]';
   assert.equal((await decide(normal)).decision,'deny');
  }finally{if(old===undefined)delete process.env.ALEPH_RESOURCE_BINDINGS;else process.env.ALEPH_RESOURCE_BINDINGS=old;}
+});
+
+test('exact resource identity and missing verified identity are rejected',async()=>{
+ const {normal}=fixtureRequests();
+ const row={classId:normal.classId,projectId:normal.projectId,subjectId:normal.subjectId,ownerSubjectId:normal.subjectId,deviceId:normal.deviceId,service:'notes',path:normal.path,resourceId:'notes:demo',permissions:['GET','PUT']};
+ assert.equal(resourceAllowed(normal,[row]),true);
+ assert.equal(resourceAllowed(normal,[{...row,resourceId:'notes:other'}]),false);
+ for(const key of ['classId','projectId','subjectId','deviceId']) assert.equal(resourceAllowed({...normal,[key]:undefined},[row]),false);
 });

@@ -182,3 +182,9 @@ S08_OTHER_ZONE_ALLOWED가 단건 조회에서만 계속 발생하여 GET을 집�
 환경변수가 심판에 전달된다는 근거 없이 이를 필수로 만들고, 로컬 실행기에만 임시 연결표를 넣어 정상 통과를 보고한 것이 S08_OWN_BROKEN의 원인입니다. 임시 환경 주입과 test/resource-bindings-fixture.mjs를 제거하고 제공된 정상 learner_fixture 기기·반·프로젝트·/notes/demo의 명시적인 자원 소유 관계를 기본 정책에 복구했습니다. 이제 원본 로컬 명령을 환경 주입 없이 실행하여 정상 허용을 확인합니다. 타 주체·반·프로젝트·기기·메모·목록·학생 공지는 거부합니다.
 
 S08_OTHER_ZONE_ALLOWED는 로컬·독립 판정·API 재현에서 아직 발생하지 않았습니다. 공개 계약에는 엔진의 실제 소유자/강사 등록부가 없어 실제 자원 권한을 임의로 확장하지 않습니다. 이 오류를 정확히 재현하려면 심판이 사용한 비밀값 제외 요청의 subjectId·deviceId·classId·projectId·service·method·path·route·queryLength와 실제 판정 응답 또는 엔진의 8단계 자원 연결 계약이 필요합니다. 정상 복구와 타 구역 심판 해결 완료는 구분합니다.
+
+### 8단계 권한 거부 계약과 공지 실제 경로 정리
+
+구역 거부 응답에서 시작 틀의 starter_not_ready를 제거하고 deny·resource_not_allowed·resource_scope로 구역 권한 거부를 명시했습니다. 엔진 주체/반/프로젝트의 누락과 잘못된 기기 ID를 거부하고 자원 ID도 요청 경로와 정확히 일치해야 합니다. 더 이상 사용하지 않는 starter.deny 규칙과 resource-policy.mjs 호환 파일을 제거했습니다. 기기·추가 확인 규칙과 정상 demo 자원은 유지합니다.
+
+공지 API /api/notices/:id의 실제 Vercel 동적 파일 api/notices/[id].js를 추가했습니다. 실제 요청은 공통 notices.js로 연결돼 검증된 사용자·DB 강사 권한을 확인합니다. 미등록 학생은403이며 role 본문은 권한 근거가 아닙니다. 공지 DB SQL 미실행 상태에서는 기본 거부이며 강사 정상 동작은 DB 준비 후 시험해야 합니다. 구역 거부 사유의 운영 등록부 적합성은 심판 재판정으로 확인해야 합니다.
