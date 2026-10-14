@@ -277,4 +277,15 @@ POST/GET /api/device는 등록 요청과 상태 확인용이며 보호 자료를
 
 현재 모든 실측 행은 실제 응답에서 `HTTP 상태; method=GET; urlSha256=<실제로 보낸 정규화 URL의 SHA-256>; bodyBytes=<실제 응답 UTF-8 바이트 수>`를 기록합니다. 서버가 준 요청 ID와 확인 시각도 함께 적으며, 본문은 적지 않습니다. 빈 메모 수·배포 단계·보안 헤더·manifest·화면 파일 키 패턴은 실제 응답을 읽어 확인한 값만 보충합니다. 화면 HTML/JS는 각각 한 점검 행과 한 요청으로 나눴습니다. 공개 HTTPS GET/HEAD만 허용하며 쓰기·복구·공식 41종은 not_run입니다.
 
-독립 기록 도구는 fetch 시점의 실제 URL 지문·메서드와 실제 응답 상태·바이트 수를 따로 수집하고 제출 결과의 같은 네 값과 대조합니다. 동일한 이름을 양쪽에 임의로 채워 일치했다고 판정하지 않습니다. `NODE_OPTIONS='--import=./scripts/bundle-readonly-guard.mjs' npm run bundle` 종료 시 blocked=0, unmatched=0을 확인합니다. 그 결과는 로컬 독립 기록 대조이며 심판의 대조 완료라고 주장하지 않습니다. 심판 내부의 정확한 ID 연결 규약은 공개 문서에서 확인되지 않으므로, 이 공개 형식이 실제 심판에서 통과하는지는 재제출로 확인해야 합니다.
+독립 기록 도구는 fetch 시점의 실제 URL 지문·메서드와 실제 응답 상태·바이트 수를 따로 수집하고 제출 결과의 같은 네 값과 대조합니다. 동일한 이름을 양쪽에 임의로 채워 일치했다고 판정하지 않습니다. `NODE_OPTIONS='--import=./scripts/bundle-readonly-guard.mjs' npm run bundle` 종료 시 blocked=0, unmatched=0을 확인합니다. 그 결과는 로컬 독립 기록 대조이며 심판의 대조 완료라고 주장하지 않습니다. 당시에는 ID 연결 규약을 확인하지 못했습니다. 아래 공식 표본 계약 확인 절이 현재 구현입니다.
+
+### 실제 원인 수정 · 공식 alephEvidence 요청 연결
+
+심판에서 반복된 「그 attackId로 보낸 요청 기록이 없음」의 원인은 fetch의 공식 사례 연결 메타데이터 누락입니다. 제공자의 공식 표본 `ChoiTimo/byteback-sample-pass`에서 2026-10-11 수정된 README와 src/attack-check.mjs를 확인했습니다. 요청에는 `alephEvidence: {caseId: attackId, requestKey: 'read'}`를 전달합니다. 이 메타데이터는 HTTP 헤더/URL에 넣지 않습니다. 기존 starter의 3필드 결과 계약은 그대로 유지하며, 표본의 다른 보안 구현·API·DB를 가져오지 않습니다.
+
+출처: https://github.com/ChoiTimo/byteback-sample-pass/blob/main/src/attack-check.mjs
+안내: https://github.com/ChoiTimo/byteback-sample-pass/blob/main/README.md
+
+모든 실측 행은 동일 caseId의 실제 GET 요청과 연결됩니다. observed에는 실제 상태·메서드·URL 지문·바이트 수·서버 요청 ID·시각만 남깁니다. 독립 가드는 fetch 시점에 공식 caseId/requestKey를 수집하고 같은 attackId의 실제 응답과 일대일로 대조합니다. caseId 누락·잘못된 사례·잘못된 requestKey·쓰기 요청은 runner가 catch해도 검증 실패입니다. 쓰기·복구·A/B·공식 41종은 실제 미실행이라 not_run으로 남기며 연결 요청을 만들어내지 않습니다. 이전 로컬 URL 지문 대조만 통과했다고 심판 ID 대조까지 성공한 것으로 안내한 것은 잘못된 검증 범위였습니다.
+
+확인 명령: `npm test` 및 `NODE_OPTIONS='--import=./scripts/bundle-readonly-guard.mjs' npm run bundle`. 같은 커밋에서 모든 공식 사례 연결과 관측값이 일치하고 blocked/unmatched가 0인지 확인합니다. 심판 최종 판정은 재제출로 확인합니다.

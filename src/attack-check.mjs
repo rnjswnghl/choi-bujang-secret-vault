@@ -9,7 +9,7 @@ export async function runAttackChecks(config) {
    const url=new URL(path,config.publicAppUrl);
    if(url.protocol!=='https:'||url.username||url.password)throw new Error('invalid_check_url');
    const method='GET';
-   const response=await fetch(url,{method,headers,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)});
+   const response=await fetch(url,{method,headers,alephEvidence:{caseId:attackId,requestKey:'read'},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)});
    const body=await response.text();
    const urlSha256=createHash('sha256').update(url.href).digest('hex');
    // These are measured facts, not a computed pass/deny claim.

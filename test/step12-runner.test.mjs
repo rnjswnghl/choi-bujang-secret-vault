@@ -28,7 +28,7 @@ test('data URL and restricted VM report metadata matching independently captured
   for(const entry of [module.runAttackChecks,sandboxed]){
    const records=[];
    globalThis.fetch=async(url,init)=>{
-    const r=response(url);records.push({method:init.method,hash:createHash('sha256').update(new URL(url).href).digest('hex'),status:r.status,bytes:(await r.clone().arrayBuffer()).byteLength});return r;
+    const r=response(url);records.push({caseId:init.alephEvidence?.caseId,requestKey:init.alephEvidence?.requestKey,method:init.method,hash:createHash('sha256').update(new URL(url).href).digest('hex'),status:r.status,bytes:(await r.clone().arrayBuffer()).byteLength});return r;
    };
    const report=await entry(config);assert.ok(report.length<=20);
    for(const row of report){
@@ -36,7 +36,7 @@ test('data URL and restricted VM report metadata matching independently captured
     if(row.observed==='not_run')continue;
     const match=row.observed.match(/^HTTP (\d{3}); method=(GET|HEAD); urlSha256=([a-f0-9]{64}); bodyBytes=(\d+)/);
     assert.ok(match,row.attackId);
-    assert.ok(records.some(r=>r.status===Number(match[1])&&r.method===match[2]&&r.hash===match[3]&&r.bytes===Number(match[4])),row.attackId);
+    assert.ok(records.some(r=>r.caseId===row.attackId&&r.requestKey==='read'&&r.status===Number(match[1])&&r.method===match[2]&&r.hash===match[3]&&r.bytes===Number(match[4])),row.attackId);
    }
   }
  }finally{globalThis.fetch=original;}
@@ -51,7 +51,7 @@ test('unexpected status is preserved; failure has no fabricated measurement',asy
   report=await module.runAttackChecks(config);assert.ok(report.every(r=>r.observed==='not_run'));
  }finally{globalThis.fetch=original;}
 });
-test('all stages use read-only requests; no fabricated request identifiers or headers',async()=>{
+test('all stages use read-only requests; official alephEvidence identifiers and no invented correlation headers',async()=>{
  const original=globalThis.fetch;
  try{
   const module=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
@@ -59,11 +59,29 @@ test('all stages use read-only requests; no fabricated request identifiers or he
    const blocked=[];
    globalThis.fetch=async(url,init)=>{
     if(!['GET','HEAD'].includes(init.method)||init.body!==undefined)blocked.push(String(url));
-    assert.equal(init.attackId,undefined);assert.ok(!Object.keys(init.headers).some(k=>k.includes('attack-id')));
+    assert.equal(init.attackId,undefined);assert.deepEqual(Object.keys(init.alephEvidence).sort(),['caseId','requestKey']);assert.equal(init.alephEvidence.requestKey,'read');assert.ok(!Object.keys(init.headers).some(k=>k.includes('attack-id')));
     return response(url);
    };
    const report=await module.runAttackChecks({...config,step});assert.deepEqual(blocked,[]);
    for(const id of ['account_a_crud','cross_owner_crud',...(step>=10?['anonymous_restore','post_restore_retest']:[]),...(step>=12?['campaign_41']:[])])assert.equal(report.find(r=>r.attackId===id).observed,'not_run');
   }
+ }finally{globalThis.fetch=original;}
+});
+
+test('official caseId record linkage detects absent, mistyped and wrong requestKey evidence',async()=>{
+ const original=globalThis.fetch;const records=[];
+ const module=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+ try{
+  globalThis.fetch=async(url,init)=>{records.push(structuredClone(init.alephEvidence));return response(url);};
+  const report=await module.runAttackChecks(config);
+  const measured=report.filter(r=>r.observed!=='not_run');
+  assert.equal(records.length,measured.length);
+  const matches=evidence=>measured.filter(row=>evidence.some(r=>r?.caseId===row.attackId&&r.requestKey==='read')).length;
+  assert.equal(matches(records),measured.length);
+  assert.equal(matches(records.map(()=>undefined)),0);
+  assert.equal(matches(records.map(r=>({...r,caseId:'wrong'}))),0);
+  assert.equal(matches(records.map(r=>({...r,requestKey:'wrong'}))),0);
+  const skipped=report.filter(r=>r.observed==='not_run');
+  assert.ok(skipped.every(row=>!records.some(r=>r.caseId===row.attackId)));
  }finally{globalThis.fetch=original;}
 });

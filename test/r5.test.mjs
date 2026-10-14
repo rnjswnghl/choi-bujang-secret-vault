@@ -49,6 +49,7 @@ test('current attack checks verify anonymous denial and no static memo disclosur
     const publicRequest=calls.find(c=>c.target.endsWith('/data.json'));
     assert.equal(publicRequest.init.redirect,'error');
     assert.equal(publicRequest.init.attackId,undefined);
+    assert.deepEqual(publicRequest.init.alephEvidence,{caseId:'static_notes',requestKey:'read'});
     assert.deepEqual(publicRequest.init.headers,{});
     globalThis.fetch=async()=>new Response('<html>not JSON</html>',{status:200});
     const failed=await runAttackChecks(config);
