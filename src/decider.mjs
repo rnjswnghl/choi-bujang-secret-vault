@@ -1,40 +1,20 @@
-// Known starter practice resource, explicitly owned by the starter practice subject.
-// This is not a mapping from engine pseudonyms to Supabase users.
-const starterResources = [{classId:'class_fixture',projectId:'project_fixture',
-  subjectId:'learner_fixture',ownerSubjectId:'learner_fixture',deviceId:'aaaaaaaaaaaaaaaa',
-  service:'notes',path:'/notes/demo',resourceId:'notes:demo',permissions:['GET','PUT']}];
-function loadResourceBindings() {
-  const raw = typeof process !== 'undefined' ? process.env.ALEPH_RESOURCE_BINDINGS : undefined;
-  if (!raw) return starterResources;
-  try { const entries = JSON.parse(raw); return Array.isArray(entries) ? entries : []; }
-  catch { return []; }
-}
-export function resourceAllowed(request, bindings = loadResourceBindings()) {
-  // User identity and device are engine-verified contract fields, not body role claims.
-  if (request.schema !== 'aleph.decision.v1' || !['classId','projectId','subjectId'].every(key =>
-    typeof request[key] === 'string' && request[key].length > 0 && request[key].length <= 256)
-    || !/^[a-f0-9]{16}$/.test(request.deviceId ?? '')) return false;
-
-  if (request.queryLength !== 0 || !['GET','PUT'].includes(request.method)) return false;
-  if (typeof request.path !== 'string' || /[%?#\\]/.test(request.path)) return false;
-  const family = request.service === 'notes' ? 'notes' : request.service === 'notices' ? 'notices' : null;
-  if (!family) return false;
-  if (request.path !== '/' + family && !request.path.startsWith('/' + family + '/')) return false;
-  const resourcePart = request.path.slice(family.length + 2);
-  if (request.path !== '/' + family && resourcePart !== 'demo'
-    && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resourcePart)) return false;
-  const expectedRoute = request.path === '/' + family ? request.method + ' /' + family : request.method + ' /' + family + '/:id';
-  if (request.route !== expectedRoute) return false;
-  // Only server-provisioned exact paths qualify; export/unknown paths have no binding.
-  return bindings.some(entry => entry.classId === request.classId
-    && entry.projectId === request.projectId && entry.subjectId === request.subjectId
-    && entry.deviceId === request.deviceId && entry.service === request.service
-    && entry.path === request.path && typeof entry.resourceId === 'string'
-    && entry.resourceId === (request.path === '/' + family ? family + ':own-list' : family + ':' + resourcePart)
-    && Array.isArray(entry.permissions)
-    && entry.permissions.includes(request.method)
-    && (family !== 'notes' || entry.ownerSubjectId === request.subjectId)
-    && (family !== 'notices' || request.method !== 'PUT' || entry.instructor === true));
+// The engine verifies identity and device. Stored note ownership is checked by the API.
+export function resourceAllowed(request) {
+  if (request.schema !== 'aleph.decision.v1'
+    || !['classId', 'projectId', 'subjectId'].every(key => typeof request[key] === 'string' && request[key].length > 0)
+    || !/^[a-f0-9]{16}$/.test(request.deviceId ?? '')
+    || request.queryLength !== 0 || typeof request.path !== 'string'
+    || /[%?#\\]/.test(request.path)) return false;
+  const service = request.service;
+  if (!['notes', 'notices'].includes(service)) return false;
+  const match = request.path.match(/^\/(notes|notices)\/([^/]+)$/);
+  if (!match || match[1] !== service) return false;
+  const id = match[2];
+  // Functional endpoints must not be confused with resource IDs.
+  if (['.', '..', 'export', 'all', 'bulk', 'batch', 'list', 'search', 'count'].includes(id.toLowerCase())) return false;
+  const methods = service === 'notes' ? ['GET', 'PUT', 'DELETE'] : ['GET'];
+  return methods.includes(request.method)
+    && request.route === `${request.method} /${service}/:id`;
 }
 
 // Only trusted ALEPH engine requests under docs/DECIDER_REQUEST.md belong here.
@@ -49,6 +29,7 @@ export async function decide(request) {
   if (request.deviceRegistered !== true) {
     return response('deny', 'device_not_registered', 'device_registered');
   }
+  if (!resourceAllowed(request)) return response('deny', 'resource_not_allowed', 'resource_scope');
   // These fields are accepted only from the engine contract, never HTTP headers.
   const signals = request.signals;
   const fixture = signals?.source === 'judge_fixture';
@@ -77,6 +58,5 @@ export async function decide(request) {
   if (riskCount >= 2 && !verified) {
     return response('step_up', 'step_up_required', 'step_up_required');
   }
-  if (resourceAllowed(request)) return response('allow', 'approved', 'resource_scope');
-  return response('deny', 'resource_not_allowed', 'resource_scope');
+  return response('allow', 'approved', 'resource_scope');
 }

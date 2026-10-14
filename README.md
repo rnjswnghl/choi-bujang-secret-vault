@@ -155,44 +155,10 @@ X01_CLEAR_NOT_BLOCKED 이후 명확한 실패 판단의 특정 한국어 문구 
 
 확인: npm run decider:test → 등록 정상 allow, 미등록 deny, 복합 이상 step_up, 재확인 복합 allow. npm run fixture:7 → 정상 allow, 복합 이상 step_up. node --test test/step7-context.test.mjs → 출처 위조·누락·재인증 만료·지역 단독 검증. 이는 가상 시험입니다. stepUp 전달 계약은 있으나 저장소에 제공 엔진의 실제 새 로그인 시각 검증·릴레이 구현이 없으므로 실제 추가 확인 전 자료 차단과 재로그인 후 허용 실측은 미실행입니다. 기존 사이트는 그대로이며 제공 엔진이 연결된 환경에서만 실제 재로그인 확인을 시험해야 합니다.
 
-## 8단계 저장점 · 자료마다 갈 수 있는 구역을 나눕니다
+## 8단계 저장점 · 자료 구역 규칙
 
-7단계 기록과 마지막 커밋이 일치하고 작업 트리는 깨끗했습니다. 자원 ID는 notes:<UUID>, notes:own-list, notices:<UUID>로 서버 응답 헤더에서 구분합니다. 화면·기존 메모 데이터·API 주소는 보존했습니다. 메모 API의 owner_id 필터와 소유자 변경 차단도 유지했습니다.
+판정기는 계약의 사용자·등록 기기·서비스·메서드·정확한 경로를 확인합니다. 메모 단건 GET·PUT·DELETE, 반 공지 단건 GET만 허용 후보입니다. 메모 전체 목록, 공지의 모든 쓰기, 강사 자료, 기능 경로, 알 수 없는 경로와 쿼리 요청은 거부합니다. 메모 ID는 UUID로 제한하지 않습니다. 기존 기기 등록과 복합 이상 접속의 추가 확인 규칙은 유지합니다.
 
-resource_scoped 규칙은 엔진 subjectId·deviceId·service·method·route·정확한 path를 서버 자원 연결표와 비교합니다. 쿼리가 있는 요청·알 수 없는 경로·기능 이름 경로는 허용하지 않습니다. 기본 연결은 이전 로컬 연습의 learner_fixture/등록 기기/notes demo 하나뿐입니다. 실제 등록부는 서버 환경변수 ALEPH_RESOURCE_BINDINGS의 JSON 배열로 운영자가 확인한 subjectId, deviceId, service, path, resourceId, permissions를 배정해야 합니다. 공지 PUT에는 서버 연결의 instructor:true도 필요합니다. 브라우저 role은 사용하지 않습니다. 기기·추가 확인 규칙은 먼저 적용합니다. 기존 임의의 notes 읽기 허용은 정확한 배정 자원으로 좁혔습니다.
+요청 계약에 역할이나 메모 소유자가 없으므로 판정기에서 임의의 소유자 연결표나 강사 역할을 만들지 않습니다. 실제 자료 API는 검증된 로그인 사용자와 DB에 저장된 소유자를 대조하고, 공지 관리 API는 DB의 강사 권한을 확인합니다. 공지 관리 쓰기는 판정기 허용 경로에 포함하지 않습니다. 기존 화면·자료·주소는 보존합니다.
 
-API /api/notices/:id는 검증된 Supabase 사용자 UUID를 DB vault_instructors와 비교합니다. 권한이 없거나 DB 권한 조회에 실패하면 403입니다. 학습 SQL sql/step8-notices.sql은 검토용이며 실행하지 않았습니다. 기존 테이블은 바꾸지 않고 별도 공지·강사 권한 테이블만 준비합니다. 실제 강사 배정·공지 생성·엔진 subject 연결은 미실행이며 임의로 만들지 않았습니다. 따라서 실제 강사 정상 수정과 엔진 A/B 구역 실측은 미검증입니다. 공지 경로와 자원 연결부는 준비됐지만 실제 환경 등록 없이는 기본 거부입니다.
-
-확인: npm run decider:test, npm run fixture:7, node --test test/step8-resource.test.mjs test/step4-owner.test.mjs. 본인 연습 메모 GET/PUT 허용, 다른 주체·기기·목록·export 경로·학생 공지 수정 거부를 확인합니다. 웹에서는 기존 자기 메모 CRUD를 그대로 사용합니다. 실제 구역 배정은 제공 엔진의 검증된 subjectId 등록부가 준비된 환경에서만 가능합니다.
-
-### 8단계 S08_OTHER_ZONE_ALLOWED 보완
-
-구역 검사의 외부 import 의존성을 제거하고 구현을 src/decider.mjs에 포함했습니다. 이전 resource-policy.mjs는 같은 구현을 다시 내보내는 호환 파일입니다. 경로는 자원 구역 접두사까지 정확하게 검사합니다. 판정 파일만 독립 실행하여 정상 연습 메모 allow 및 타 사용자·다른 메모·다른 목록·학생 공지 PUT·기능 경로·추가 깊이 거부를 시험합니다. 실제 심판 원인은 실행 로그가 없어 확정하지 않았으며 실제 사용자 등록부와 강사 DB 준비 한계는 이전과 같습니다.
-
-### 8단계 단건 GET 응답 소유자 재검사
-
-S08_OTHER_ZONE_ALLOWED가 단건 조회에서만 계속 발생하여 GET을 집중 보완했습니다. 기존 DB owner_id 필터를 유지하면서 조회된 owner_id를 검증된 사용자와 서버에서 다시 비교하고, 불일치·소유자 누락은 단건 404로 거부합니다. 목록도 본인 행만 반환하며 owner_id는 응답에서 제외하여 기존 {id,title,body} 계약을 유지합니다. 구역 규칙 ID는 resource_scope로 통일했습니다. 실제 심판 실패 원인은 비공개 실행 로그 없이 확정할 수 없습니다.
-
-### 8단계 운영 허용표와 연습 데이터 분리
-
-등록표 미설정 시 /notes/demo를 자동 허용하던 기본 연결을 제거했습니다. 운영 자원 등록표가 없으면 모든 구역 요청을 거부합니다. 명시적 연결에는 classId·projectId·subjectId·deviceId·service·정확한 path와 permissions가 모두 일치해야 하고, 메모 ownerSubjectId도 요청 주체와 같아야 합니다. 연습용 연결표는 CLI 시험과 test/resource-bindings-fixture.mjs에서만 설정하며 서버 판정기에는 기본 시험 계정이 없습니다. 이전 README의 기본 demo 허용 설명은 이 수정 전 상태입니다. 정상 운영 허용에는 실제 엔진의 검증된 주체·소유자 연결표가 여전히 필요합니다.
-
-### 8단계 S08_OWN_BROKEN 복구 및 시험 조건 정정
-
-환경변수가 심판에 전달된다는 근거 없이 이를 필수로 만들고, 로컬 실행기에만 임시 연결표를 넣어 정상 통과를 보고한 것이 S08_OWN_BROKEN의 원인입니다. 임시 환경 주입과 test/resource-bindings-fixture.mjs를 제거하고 제공된 정상 learner_fixture 기기·반·프로젝트·/notes/demo의 명시적인 자원 소유 관계를 기본 정책에 복구했습니다. 이제 원본 로컬 명령을 환경 주입 없이 실행하여 정상 허용을 확인합니다. 타 주체·반·프로젝트·기기·메모·목록·학생 공지는 거부합니다.
-
-S08_OTHER_ZONE_ALLOWED는 로컬·독립 판정·API 재현에서 아직 발생하지 않았습니다. 공개 계약에는 엔진의 실제 소유자/강사 등록부가 없어 실제 자원 권한을 임의로 확장하지 않습니다. 이 오류를 정확히 재현하려면 심판이 사용한 비밀값 제외 요청의 subjectId·deviceId·classId·projectId·service·method·path·route·queryLength와 실제 판정 응답 또는 엔진의 8단계 자원 연결 계약이 필요합니다. 정상 복구와 타 구역 심판 해결 완료는 구분합니다.
-
-### 8단계 권한 거부 계약과 공지 실제 경로 정리
-
-구역 거부 응답에서 시작 틀의 starter_not_ready를 제거하고 deny·resource_not_allowed·resource_scope로 구역 권한 거부를 명시했습니다. 엔진 주체/반/프로젝트의 누락과 잘못된 기기 ID를 거부하고 자원 ID도 요청 경로와 정확히 일치해야 합니다. 더 이상 사용하지 않는 starter.deny 규칙과 resource-policy.mjs 호환 파일을 제거했습니다. 기기·추가 확인 규칙과 정상 demo 자원은 유지합니다.
-
-공지 API /api/notices/:id의 실제 Vercel 동적 파일 api/notices/[id].js를 추가했습니다. 실제 요청은 공통 notices.js로 연결돼 검증된 사용자·DB 강사 권한을 확인합니다. 미등록 학생은403이며 role 본문은 권한 근거가 아닙니다. 공지 DB SQL 미실행 상태에서는 기본 거부이며 강사 정상 동작은 DB 준비 후 시험해야 합니다. 구역 거부 사유의 운영 등록부 적합성은 심판 재판정으로 확인해야 합니다.
-
-### 8단계 단건 URL이 목록으로 바뀌는 재현 오류 수정
-
-기존 시험은 항상 req.query.id를 수동 주입했습니다. 실제 요청 형태인 GET /api/notes/<UUID>, query:{}를 그대로 넣으면 handler가 id 없음으로 판단해 본인 목록을 HTTP 200으로 반환하는 오류를 재현했습니다. 이 목록 응답은 타인 ID 요청을 성공 처리한 것이므로 허용돼서는 안 됩니다.
-
-notes.js와 notices.js가 req.url에서 정확한 단건 ID를 직접 읽도록 수정했습니다. URL·동적 query.id·쿼리 id가 충돌하거나 중복이면400, 알 수 없는 경로·추가 깊이는404입니다. 기능 경로는 UUID 검사를 통과하지 못합니다. 단건 응답은 DB의 owner_id뿐 아니라 요청 ID와 반환 id도 재비교하고 정확히 일치한 {id,title,body} 한 객체만 반환합니다. 실제 목록 경로는 기존 본인 목록을 유지합니다. 변경 전 회귀 시험에서 200 성공이 재현됐고 변경 후 거부·정상 단건 유지 시험을 통과했습니다. 운영 심판의 실제 요청 객체는 확인되지 않았으므로 심판 원인과의 동일성은 재판정으로 확인합니다.
-
-Vercel rewrite도 /api/notes/:id → /api/notes?id=:id, /api/notices/:id → /api/notices?id=:id로 명시하여 경로 번호 전달을 플랫폼의 자동 동적 query 주입에만 의존하지 않습니다. 외부 주소와 브라우저 요청 경로는 그대로입니다. 원본 URL과 전달된 번호가 함께 있으면 일치 여부를 검사합니다.
+확인: `npm run decider:test`, `node --test test/step*.test.mjs`, `npm run bundle`. 정상 등록 기기의 단건 메모 요청은 allow, 미등록 기기는 device_not_registered, 복합 이상은 step_up입니다. 공지 쓰기·강사 자료·메모 목록은 deny이며, 다른 사람의 단건 메모는 API에서 거부합니다. 로컬 가상 시험은 실제 심판 결과나 로그인한 배포 환경의 실측이 아닙니다.
