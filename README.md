@@ -295,3 +295,13 @@ POST/GET /api/device는 등록 요청과 상태 확인용이며 보호 자료를
 a2e717018820의 공식 사례 연결은 인식됐으나 observed에 requestId·checkedAt·notesCount·step·nosniff·standalone·keyPatternsFound를 붙여 불합격했습니다. 이번에는 observed 전체를 `HTTP <상태>; method=GET; urlSha256=<64자리 SHA-256>; bodyBytes=<정수>` 네 관측값 또는 정확한 `not_run`으로 제한합니다. 추가 설명·성공 문구·다른 필드는 붙이지 않습니다. request ID/시각은 별도 로컬 감사 기록과 기존 작전실 표에만 남기고 observed에는 넣지 않습니다. 공식 alephEvidence 사례 연결과 GET·HEAD 제한은 그대로 유지합니다.
 
 시험과 독립 가드는 전체 문자열에 시작/끝 앵커를 적용합니다. 허용된 네 값 뒤에 잘못된 필드나 문장을 하나라도 붙이면 검증 실패입니다. 부분 문자열만 맞으면 통과시키던 로컬 검증을 수정했습니다. 실제 응답에서 얻은 숫자만 기록하며 쓰기·복구·A/B·공식 41종은 not_run으로 남깁니다.
+
+## 보너스 xdr-03 저장점 · 알려진 취약점 악용 탐지
+
+`npm run xdr:run -- known-cve`로 원본 Wazuh 형식 시험 경보 24건을 실행합니다. 확인용 `read-alerts.mjs`는 시각·출발 주소·가상 계정·수준·설명만 추출하며 비밀값 형태를 가립니다. 원본 fixture는 변경하지 않았습니다.
+
+`patterns.json`의 근거는 NVD CVE-2021-44228 및 MITRE ATT&CK T1190입니다. `decide.mjs` 맨 위 상수는 이 목록과 동일하며 import·파일 접근·네트워크 없이 판단합니다. 요청에 완전한 JNDI 원격 조회 구문이 있으면 confidence 0.96으로 block, T1190과 취약점 관련 단편 신호만 있으면 0.65로 alert, 나머지는 0.1로 record입니다. reason은 패턴 이름만 반환합니다. 이 확신도는 학생의 정책 수치이며 실제 악용 성공을 증명하지 않습니다.
+
+`respond.mjs`가 차단 후보의 출발 IP에 발생 시각부터 15분 TTL과 근거 경보 번호를 붙이고 block·alert만 가린 `xdr/alerts.log`에 기록합니다. `src/xdr-decider.mjs`에서 기존 두 모듈과 함께 읽되 기존 `src/decider.mjs` 규칙은 보존했습니다. 과거·만료·미래 경보는 현재 차단 규칙에 넣지 않습니다. 운영 ALEPH SDP 엔진 계약에는 출발 IP가 없으므로 실제 운영 게이트웨이 연결은 완료됐다고 주장하지 않습니다. 연결 시험은 신뢰된 출발 IP와 경보 당시 시각으로 수행했습니다.
+
+검증: `npm test` 60개 통과. 시험 결과 block 8 / alert 8 / record 8, 정상 이벤트 차단 0. 설치는 기존 `npm install`, 실행은 위 XDR 명령, 별도 상주 프로세스가 없어 중지는 명령 종료입니다. known-cve 규칙만 비활성화하려면 해당 deny-rules.json을 빈 배열로 보관하고 기존 모듈·DB는 보존합니다. 자료실 단계는 12, 배포 주소·발급자·허용 경로·원본 API 설정은 유지했습니다. 화면 버튼으로 실행하는 기능이 아니며 터미널에서 결과 JSON을 확인합니다.
