@@ -1,0 +1,22 @@
+[
+  {
+    "name": "abnormal_admin_group",
+    "condition": "관련 기법과 수준 10 이상; 관리자 그룹 추가에 원격 출처·명령 실행·반복 추가·빠른 재가입 중 하나 결합",
+    "evidence": "MITRE T1078 정상 계정 도용 및 비정상 권한 사용. https://attack.mitre.org/techniques/T1078/; 수치 임계값은 학생 정책."
+  },
+  {
+    "name": "abnormal_privileged_use",
+    "condition": "관련 기법과 수준 10 이상; 관리자 명령·세션 권한 변경에 신규 관리자·낯선 주소·타 계정 권한 사용 결합",
+    "evidence": "MITRE T1068 권한 상승 악용 및 T1078. https://attack.mitre.org/techniques/T1068/; 경보 신호는 악용 성공 증거와 구분."
+  },
+  {
+    "name": "privilege_review",
+    "condition": "T1068/T1078 수준 5 이상, 차단할 복합 근거 부족",
+    "evidence": "관리자 명령 단발·취소·실패 또는 일반 그룹 변경만으로 차단하지 않음. T1068/T1078 관련 경보는 알림."
+  },
+  {
+    "name": "no_privilege_signal",
+    "condition": "위 패턴에 해당하지 않는 정상 경보",
+    "evidence": "계정 이름이나 정상 로그인만으로 권한 상승을 단정하지 않고 기록만."
+  }
+]
