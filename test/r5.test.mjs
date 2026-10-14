@@ -48,7 +48,8 @@ test('current attack checks verify anonymous denial and no static memo disclosur
     assert.match(staticData.observed,/메모 0건\/404 true/u);
     const publicRequest=calls.find(c=>c.target.endsWith('/data.json'));
     assert.equal(publicRequest.init.redirect,'error');
-    assert.equal(publicRequest.init.headers,undefined);
+    assert.equal(publicRequest.init.attackId,'static_notes');
+    assert.equal(publicRequest.init.headers['x-aleph-attack-id'],'static_notes');
     globalThis.fetch=async()=>new Response('<html>not JSON</html>',{status:200});
     const failed=await runAttackChecks(config);
     assert.match(failed.find(r=>r.attackId==='anonymous_list').observed,/인증 거부 false/u);

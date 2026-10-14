@@ -45,7 +45,7 @@ test('unexpected allow, invalid JSON, absent IDs and network failure never becom
    globalThis.fetch=fake;const report=await module.runAttackChecks(config);
    const row=report.find(r=>r.attackId==='anonymous_list');
    if(name==='unexpected_allow'){assert.match(row.observed,/HTTP 200.*인증 거부 false.*미제공/);}
-   else assert.match(row.observed,/미실행|실패/);
+   else assert.equal(row.observed,'not_run');
   }
  }finally{globalThis.fetch=original;}
 });
@@ -69,5 +69,28 @@ test('every step sends only HTTPS GET/HEAD and writing checks are exactly not_ru
     assert.equal(report.find(r=>r.attackId===id).observed,'not_run');
    }
   }
+ }finally{globalThis.fetch=original;}
+});
+
+test('every measured result has a matching request ID and unexecuted results have no requests',async()=>{
+ const original=globalThis.fetch;const calls=[];
+ try{
+  globalThis.fetch=async(url,init={})=>{
+   assert.match(init.attackId,/^[a-z0-9][a-z0-9_.-]{0,79}$/);
+   assert.equal(init.headers['x-aleph-attack-id'],init.attackId);
+   assert.equal(init.headers['x-attack-id'],init.attackId);
+   calls.push({attackId:init.attackId,path:new URL(url).pathname});
+   return response(url);
+  };
+  const module=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+  const report=await module.runAttackChecks(config);
+  for(const row of report){
+   const paired=calls.filter(call=>call.attackId===row.attackId);
+   if(row.observed==='not_run')assert.equal(paired.length,0,row.attackId);
+   else assert.ok(paired.length>0,row.attackId);
+  }
+  assert.equal(calls.filter(call=>call.attackId==='browser_key_scan').length,2);
+  assert.equal(new Set(calls.map(call=>call.attackId)).size,9);
+  assert.ok(calls.every(call=>report.some(row=>row.attackId===call.attackId)));
  }finally{globalThis.fetch=original;}
 });
