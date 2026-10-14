@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 let source=await readFile(new URL('../api/notices.js',import.meta.url),'utf8');
 source=source.replace(/^import .*;\n/gm,'').replace('export default async function handler','async function handler');
-const build=new Function('createClient','createLoginVerifier','config',source+'\nreturn handler;');
+const build=new Function('createClient','createLoginVerifier','config','const enforceAppDevice=async()=>true;\n'+source+'\nreturn handler;');
 const id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 process.env.SUPABASE_URL='https://hzovkgmggfqoumxwbejm.supabase.co';
 process.env.SUPABASE_SECRET_KEY='local-test-placeholder';

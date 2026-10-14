@@ -1,3 +1,4 @@
+import {enforceAppDevice} from '../src/app-device.mjs';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
     const user = await verify(authorization);
     if (!user) return res.status(401).json({ error: '로그인 인증에 실패했습니다.' });
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    if (!await enforceAppDevice(req,db,user)) return res.status(403).json({error:'app_device_not_verified'});
     let id = req.query?.id;
     // Node function query objects need not contain filesystem route parameters.
     // A URL carrying an ID must never fall back to the collection operation.

@@ -37,7 +37,7 @@ export async function runRecoveryRetest() {
  }
 
  const cases=[
-  ['normal_and_forbidden_after_restore',['test/step4-owner.test.mjs','test/step6-device.test.mjs','test/step7-context.test.mjs','test/step8-resource.test.mjs','test/step8-read-boundary.test.mjs','test/step8-notices.test.mjs','test/step9-detect.test.mjs','test/step10-recovery.test.mjs','test/recovery-retest.test.mjs','test/r5.test.mjs']],
+  ['normal_and_forbidden_after_restore',['test/step4-owner.test.mjs','test/step6-device.test.mjs','test/step7-context.test.mjs','test/step8-resource.test.mjs','test/step8-read-boundary.test.mjs','test/step8-notices.test.mjs','test/step9-detect.test.mjs','test/step10-recovery.test.mjs','test/step11-app-device.test.mjs','test/recovery-retest.test.mjs','test/r5.test.mjs']],
  ];
  const results=[];
  for(const [name,files] of cases){

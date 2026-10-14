@@ -1,3 +1,4 @@
+import {enforceAppDevice} from '../src/app-device.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
 import config from '../aleph.config.json' with { type: 'json' };
@@ -34,6 +35,7 @@ export default async function handler(req, res) {
     // Judge pseudonyms are not DB instructor identities.
     if (user.kind!=='student') return res.status(403).json({error:'공지 권한이 없습니다.'});
     const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+    if (!await enforceAppDevice(req,db,user)) return res.status(403).json({error:'app_device_not_verified'});
     const {data:grant,error:grantError}=await db.from('vault_instructors').select('user_id').eq('user_id',user.userId).maybeSingle();
     if (grantError || !grant) return res.status(403).json({error:'공지 권한이 없습니다.'});
     let query=db.from('vault_notices');

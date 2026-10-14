@@ -1,3 +1,4 @@
+import {INTERNAL_RECOVERY_RETEST} from './app-device.mjs';
 // Re-execute the real notes API after restoration. Keep response bodies/tokens in memory only.
 export async function retestRestoredNote({handler,authorization,id,expected,otherId}) {
  const results=[];
@@ -8,7 +9,7 @@ export async function retestRestoredNote({handler,authorization,id,expected,othe
    results.push({name,status,passed:validate(status,body)});
   } catch {results.push({name,status,passed:false});}
  }
- const read={method:'GET',url:'/api/notes/'+id,query:{id},headers:{authorization}};
+ const read={[INTERNAL_RECOVERY_RETEST]:true,method:'GET',url:'/api/notes/'+id,query:{id},headers:{authorization}};
  await check('restored_own_read',read,(status,body)=>status===200&&body?.id?.toLowerCase()===id.toLowerCase()&&body.title===expected.title&&body.body===expected.content);
  await check('anonymous_read',{...read,headers:{}},status=>status===401);
  // The API rejects forged ownership before any write. The restored row remains untouched.

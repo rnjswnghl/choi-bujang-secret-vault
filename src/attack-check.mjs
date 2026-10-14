@@ -61,5 +61,16 @@ export async function runAttackChecks(config) {
     } catch { observed = '미실행/연결 실패: 복구 경로 확인 불가'; }
     attempts.push({attackId:'anonymous_restore',expected:'익명의 복구 POST는 401 또는 403',observed});
   }
+  if(config.step>=11){
+    for(const [path,attackId] of [['/manifest.webmanifest','app_manifest'],['/api/device?id='+ '0'.repeat(64),'device_approval_anonymous']]){
+      let observed;
+      try{
+        const response=await fetch(new URL(path,config.publicAppUrl),{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)});
+        const data=await response.json();
+        observed=attackId==='app_manifest'?`HTTP ${response.status}; standalone ${data.display==='standalone'}; 아이콘 ${data.icons?.length??0}`:`HTTP ${response.status}; 익명 승인 조회 거부 ${response.status===401}`;
+      }catch{observed='미실행/연결 실패';}
+      attempts.push({attackId,expected:attackId==='app_manifest'?'설치형 manifest 제공':'익명 승인 조회 401',observed});
+    }
+  }
   return attempts;
 }

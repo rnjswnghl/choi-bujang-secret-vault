@@ -13,15 +13,38 @@ const authFetch = async (input, init) => {
 };
 const client = createClient('https://hzovkgmggfqoumxwbejm.supabase.co', 'auth-via-server', {
   global: { fetch: authFetch },
-  auth: { storageKey: 'sb-hzovkgmggfqoumxwbejm-auth-token' },
+  auth: { persistSession: false, detectSessionInUrl: false },
 });
 const el = id => document.getElementById(id);
-let generation = 0;
+// Remove the old SDK session only; no new token or private key is persisted.
+localStorage.removeItem('sb-hzovkgmggfqoumxwbejm-auth-token');
+let generation = 0, deviceKey, approvedDevice, currentUser;
+const hex=bytes=>Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');
+const base64url=bytes=>btoa(String.fromCharCode(...new Uint8Array(bytes))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
+async function deviceStatus(request=false){
+ const current=generation;
+ const {data:{session}}=await client.auth.getSession();
+ if(!session)throw new Error('먼저 로그인하세요.');
+ if(request&&!deviceKey)deviceKey=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},false,['sign','verify']);
+ const publicKey=deviceKey?await crypto.subtle.exportKey('jwk',deviceKey.publicKey):null;
+ const response=await fetch(request?'/api/device':'/api/device?id='+approvedDevice?.id,{method:request?'POST':'GET',cache:'no-store',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:request?JSON.stringify({publicKey}):undefined});
+ const result=await response.json();if(current!==generation)return;if(!response.ok)throw new Error(result.error);
+ approvedDevice=result;el('device-status').textContent='기기 상태: '+result.status+' · '+result.id;
+ el('workspace').hidden=result.status!=='approved';
+ if(result.status==='approved')await load();else el('notes').replaceChildren();
+}
+async function proof(path,method,body){
+ if(!deviceKey||approvedDevice?.status!=='approved')throw new Error('서버의 기기 승인이 필요합니다.');
+ const time=String(Date.now()),nonce=hex(crypto.getRandomValues(new Uint8Array(16)));
+ const hash=hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(body?JSON.stringify(body):'')));
+ const signature=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},deviceKey.privateKey,new TextEncoder().encode([method,path,hash,time,nonce].join('\n')));
+ return {'X-App-Device':approvedDevice.id,'X-App-Time':time,'X-App-Nonce':nonce,'X-App-Signature':base64url(signature)};
+}
 const say = message => { el('status').textContent = message; };
 async function api(path = '', method = 'GET', body) {
   const { data: { session } } = await client.auth.getSession();
   if (!session) throw new Error('로그인이 필요합니다.');
-  const response = await fetch('/api/notes' + path, { method, cache: 'no-store', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const response = await fetch('/api/notes' + path, { method, cache: 'no-store', headers: { ...await proof('/api/notes'+path,method,body), Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || '요청에 실패했습니다.');
   return data;
@@ -41,10 +64,13 @@ async function load() {
 }
 async function state(session) {
   generation++;
-  el('login').hidden = !!session; el('logout').hidden = !session; el('workspace').hidden = !session;
+  el('login').hidden = !!session; el('logout').hidden = !session; el('workspace').hidden = true;
+  if(currentUser!==session?.user?.id){approvedDevice=undefined;deviceKey=undefined;}
+  currentUser=session?.user?.id;
   el('notes').replaceChildren(); el('editor').reset();
   say(session ? '로그인되었습니다.' : '로그인 후 자료를 볼 수 있습니다.');
-  if (session) { try { await load(); } catch (e) { say(e.message); } }
+  el('device-panel').hidden=!session; el('device-status').textContent='기기 승인 전에는 자료를 표시하지 않습니다.';
+  if(session&&deviceKey&&approvedDevice){try{await deviceStatus(false);}catch(e){say(e.message);}}
 }
 el('login').onsubmit = async event => {
   event.preventDefault();
@@ -61,3 +87,9 @@ el('cancel').onclick = () => el('editor').reset();
 client.auth.onAuthStateChange((_event, session) => { setTimeout(() => state(session), 0); });
 const { data: { session } } = await client.auth.getSession();
 await state(session);
+
+el('device-request').onclick=()=>deviceStatus(true).catch(e=>say(e.message));
+el('device-check').onclick=()=>deviceStatus(false).catch(e=>say(e.message));
+window.addEventListener('offline',()=>{generation++;el('workspace').hidden=true;el('notes').replaceChildren();say('오프라인입니다. 보호 자료는 오프라인으로 저장하지 않습니다.');});
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>say('오프라인 안내 등록에 실패했습니다. 온라인으로 이용하세요.'));

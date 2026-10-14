@@ -196,3 +196,17 @@ DB 준비는 필수입니다. Supabase SQL Editor에서 sql/step10-recovery.sql�
 이전 버전은 복원 후 재시험 순서를 설명했지만 복구 경로에 실행을 연결하지 않았습니다. 이제 POST /api/restore의 DB 복원이 끝나면 실제 notes API handler를 다시 실행하여 B 본인 단건 읽기(200 및 저장된 복원 내용 일치), 익명 읽기(401), 위조 소유자 쓰기(403), 다른 소유자 메모 읽기(404)를 검사합니다. 결과는 retest 배열의 이름·HTTP 상태·passed로 반환합니다. 하나라도 실패하면 restore_retest_failed와 502를 반환하여 재시험 실패를 성공처럼 처리하지 않습니다. 다른 소유자 메모가 없으면 해당 건은 passed:null 및 not_run으로 명시합니다. 토큰·메모 본문은 결과에 남기지 않습니다.
 
 `node scripts/recovery-retest.mjs`는 검증된 시험 정책 복원 직후 1~9단계 관련 정상·금지 API/판정기/탐지 회귀 시험을 다시 실행하고 artifacts/recovery-retest.json에 로컬 실행 시각·실행 여부·통과 여부를 기록합니다. npm run bundle도 이 절차를 실제 실행하고 post_restore_retest 결과를 제출 점검에 포함합니다. 이 결과는 로컬 모의 시험이며 운영 계정 시험으로 바꿔 적지 않습니다. 운영 B의 복원 후 API 시험은 심판이 복구 경로를 호출할 때 실행됩니다. 기존 DB 사본과 복구 SQL은 바꾸지 않습니다.
+
+## 11단계 저장점 · 설치형 접속 앱과 기기 승인
+
+10단계 기록과 마지막 커밋 483f3020c322가 일치하며 다른 작업은 없었습니다. 기존 판정기·탐지·복구와 메모 소유자 검사는 보존했습니다. manifest.webmanifest, 192/512 PNG 아이콘, 오프라인 안내를 추가했습니다. 서비스 워커는 공개 offline.html 안내만 캐시하며 API·메모·토큰은 캐시하지 않습니다. 별도 접속 프로그램은 없습니다.
+
+Supabase SDK는 persistSession:false이며 토큰은 메모리에만 보관합니다. 기존 SDK 저장 토큰 항목은 제거합니다. 기기 개인키는 Web Crypto의 내보낼 수 없는 ECDSA P-256 키로 생성해 메모리에만 둡니다. 브라우저 저장소·IndexedDB·쿠키·캐시에 키를 넣지 않습니다. 공개키만 POST /api/device로 보내며 서버는 인증된 사용자에 연결한 pending 요청만 등록합니다. 버튼·앱 설치로 승인되지 않습니다.
+
+필수 DB 준비: Supabase SQL Editor에서 sql/step11-app-devices.sql을 한 번 실행합니다. 화면에서 로그인 → 「기기 승인 요청」 → 표시된 기기 ID와 DB의 owner_id를 대조합니다. 관리자가 SQL의 주석 승인 예시를 복사하고 확인한 ID·owner_id로 교체해 해당 pending 한 행만 approved로 변경합니다. 「승인 상태 확인」을 누르면 승인된 기기의 기존 자료실이 열립니다. 관리자 SQL 이외에 공개 승인 경로는 없습니다. revoked로 바꾸면 이후 보호 요청은 거부됩니다.
+
+POST/GET /api/device는 등록 요청과 상태 확인용이며 보호 자료를 반환하지 않습니다. 실제 메모·공지 API는 매 요청에서 사용자와 승인 공개키의 결합, ECDSA 서명, 메서드·원래 정확한 URL·JSON 본문 SHA-256·60초 시각·일회용 nonce를 확인합니다. 서명 누락·경로/본문 변경·nonce 재사용은 거부됩니다. 동적 API 파일을 사용해 서명한 원래 경로를 유지하고 이전 URL 재작성은 제거했습니다. 판정기에서는 기존 deviceRegistered 규칙을 유지하며 앱 등록표와 엔진 등록표를 임의로 동일시하지 않습니다.
+
+서버 내부 복구 재시험은 서명 검증된 심판 B에 한해 HTTP에서 만들 수 없는 Symbol 문맥으로 기존 API 검사를 실행합니다. 외부 요청은 이 문맥을 만들 수 없으며 복구 관리자 경로는 기존 B 인증과 백업 검증을 유지합니다. 기존 소유자 시험은 기기 검사를 별도 의존성으로 분리했고, step11 시험은 실제 서명 검사·승인 상태·재사용 및 실제 자료 API의 서명 누락 거부를 검사합니다.
+
+확인: `node --test test/step*.test.mjs test/recovery-retest.test.mjs`, `npm run decider:test`, `npm run detect:test`, `npm run bundle`. 승인 전 workspace는 숨겨지고 자료는 비어 있습니다. 오프라인에서는 자료를 비우고 안내만 표시합니다. 새로고침·로그아웃으로 메모리 키가 사라지므로 다시 등록/승인이 필요합니다. 실제 관리자 승인 및 로그인한 브라우저 CRUD는 SQL 적용 후 확인하며, 미실행을 통과로 기록하지 않습니다.

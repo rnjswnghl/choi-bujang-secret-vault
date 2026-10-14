@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 const source = (await readFile(new URL('../api/notes.js', import.meta.url), 'utf8'))
   .replace(/^import .*;\n/gm, '').replace('export default async function handler', 'async function handler');
 // Execute the production handler with isolated DB/verifier dependencies, without making JWTs.
-const build = new Function('randomUUID', 'createClient', 'createLoginVerifier', 'config', source + '\nreturn handler;');
+const build = new Function('randomUUID', 'createClient', 'createLoginVerifier', 'config', 'const enforceAppDevice=async()=>true;\n'+source + '\nreturn handler;');
 const a = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const b = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const noteId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
