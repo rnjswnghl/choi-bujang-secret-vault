@@ -269,8 +269,12 @@ POST/GET /api/device는 등록 요청과 상태 확인용이며 보호 자료를
 
 직접 확인: 승인된 계정으로 「서버 기록 확인」에서 API 집계와 표시를 비교하고 「정상·금지 요청 실측」에서 서명 정상 200·무인증 401·무서명 403을 확인합니다. 조회 실패·회수·로그아웃 시 이전 기록은 사라져야 합니다. 공식 41종 결과 없는 항목은 미실행이고 엔진 출처는 ALEPH SDP 엔진 사용입니다. 실제 운영 A/B와 41종 판정은 이 환경에서 완료됐다고 주장하지 않습니다.
 
-### 실행 기록 대조 · 점검 ID와 요청 연결
+### 실행 기록 대조 · 공식 문서의 요청 지문 형식
 
-제출 결과의 attackId만 적고 fetch에 같은 식별자를 전달하지 않아 실행 기록 대조가 실패했습니다. 모든 읽기 점검은 공통 request 함수를 사용해 fetch 옵션의 `attackId`와 HTTP `x-aleph-attack-id`·`x-attack-id` 헤더에 동일한 비밀 아닌 점검 이름을 전달합니다. 이 값은 요청 상관관계용이며 신원·권한·기기 승인 근거로 쓰지 않습니다. 화면 파일 두 개는 browser_key_scan이라는 하나의 점검 ID에 두 읽기 요청을 연결합니다. 서버 X-Request-Id는 개별 서버 요청 번호로 별도 기록합니다.
+지난 b83dbaf555d3의 임의 fetch 옵션과 x-aleph-attack-id/x-attack-id 헤더 방식은 심판에서 인정되지 않았습니다. 이 방식과 이를 근거로 한 ID 대조를 제거했습니다. 공식 공개 12단계 채점표의 5절은 observed가 `HTTP 401`, `bodyBytes=`, `jsonArrayLength=`, `jsonReady=`, `method=`, `urlSha256=` 또는 `not_run` 같은 확인 가능한 형식이어야 한다고 명시합니다.
 
-읽기 전용 가드는 fetch 호출에서 attackId·메서드·경로·응답 상태·서버 요청 ID·시각만 별도로 수집합니다. 제출 JSON의 모든 observed != not_run 행에 완료된 동일 ID 요청이 있는지 대조하고 없으면 종료 코드 실패로 처리합니다. 요청 토큰·메모 본문·비밀값은 수집하지 않으며 artifacts/bundle-request-audit.json은 Git에 올리지 않습니다. 연결 실패·응답 해석 실패로 실측을 얻지 못한 점검도 not_run으로 남깁니다. 쓰기 요청 금지와 공식 41종 미실행 처리는 유지합니다.
+정본 안내: https://aleph-omega.vercel.app/docs/defense/judge-rubrics/stage-12.md
+
+현재 모든 실측 행은 실제 응답에서 `HTTP 상태; method=GET; urlSha256=<실제로 보낸 정규화 URL의 SHA-256>; bodyBytes=<실제 응답 UTF-8 바이트 수>`를 기록합니다. 서버가 준 요청 ID와 확인 시각도 함께 적으며, 본문은 적지 않습니다. 빈 메모 수·배포 단계·보안 헤더·manifest·화면 파일 키 패턴은 실제 응답을 읽어 확인한 값만 보충합니다. 화면 HTML/JS는 각각 한 점검 행과 한 요청으로 나눴습니다. 공개 HTTPS GET/HEAD만 허용하며 쓰기·복구·공식 41종은 not_run입니다.
+
+독립 기록 도구는 fetch 시점의 실제 URL 지문·메서드와 실제 응답 상태·바이트 수를 따로 수집하고 제출 결과의 같은 네 값과 대조합니다. 동일한 이름을 양쪽에 임의로 채워 일치했다고 판정하지 않습니다. `NODE_OPTIONS='--import=./scripts/bundle-readonly-guard.mjs' npm run bundle` 종료 시 blocked=0, unmatched=0을 확인합니다. 그 결과는 로컬 독립 기록 대조이며 심판의 대조 완료라고 주장하지 않습니다. 심판 내부의 정확한 ID 연결 규약은 공개 문서에서 확인되지 않으므로, 이 공개 형식이 실제 심판에서 통과하는지는 재제출로 확인해야 합니다.

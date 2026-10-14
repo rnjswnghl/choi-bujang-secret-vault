@@ -44,15 +44,15 @@ test('current attack checks verify anonymous denial and no static memo disclosur
     const results=await runAttackChecks({...config,step:1});
     const denied=results.find(r=>r.attackId==='anonymous_list');
     const staticData=results.find(r=>r.attackId==='static_notes');
-    assert.match(denied.observed,/인증 거부 true/u);
-    assert.match(staticData.observed,/메모 0건\/404 true/u);
+    assert.match(denied.observed,/^HTTP 401; method=GET; urlSha256=[a-f0-9]{64}; bodyBytes=\d+/u);
+    assert.match(staticData.observed,/^HTTP 200; method=GET; urlSha256=[a-f0-9]{64}; bodyBytes=\d+/u);
     const publicRequest=calls.find(c=>c.target.endsWith('/data.json'));
     assert.equal(publicRequest.init.redirect,'error');
-    assert.equal(publicRequest.init.attackId,'static_notes');
-    assert.equal(publicRequest.init.headers['x-aleph-attack-id'],'static_notes');
+    assert.equal(publicRequest.init.attackId,undefined);
+    assert.deepEqual(publicRequest.init.headers,{});
     globalThis.fetch=async()=>new Response('<html>not JSON</html>',{status:200});
     const failed=await runAttackChecks(config);
-    assert.match(failed.find(r=>r.attackId==='anonymous_list').observed,/인증 거부 false/u);
-    assert.match(failed.find(r=>r.attackId==='static_notes').observed,/메모 0건\/404 false/u);
+    assert.match(failed.find(r=>r.attackId==='anonymous_list').observed,/^HTTP 200;/u);
+    assert.match(failed.find(r=>r.attackId==='static_notes').observed,/^HTTP 200;/u);
   } finally { globalThis.fetch=originalFetch; }
 });
