@@ -31,27 +31,27 @@ test('build identity uses Vercel Git and deployment metadata', () => {
   assert.throws(() => deploymentIdentity({ ...env, VERCEL_GIT_COMMIT_SHA: 'short' }, config));
 });
 
-test('first attack check reads public data.json without credentials', async () => {
+test('current attack checks verify anonymous denial and no static memo disclosure', async () => {
   const originalFetch = globalThis.fetch;
-  let requestUrl;
-  let options;
+  const calls=[];
   try {
     globalThis.fetch = async (url, init) => {
-      requestUrl = String(url);
-      options = init;
-      return new Response(JSON.stringify({ sampleMarker: 'SAMPLE_NOTE_1', notes: [{ title: '가상' }] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      });
+      const target=String(url);calls.push({target,init});
+      const anonymous=target.endsWith('/api/notes');
+      const data=anonymous?{error:'login_required'}:{notes:[]};
+      return new Response(JSON.stringify(data),{status:anonymous?401:200,headers:{'content-type':'application/json'}});
     };
-    const [result] = await runAttackChecks(config);
-    assert.equal(requestUrl, 'https://student-defense.vercel.app/data.json');
-    assert.equal(options.redirect, 'error');
-    assert.match(result.observed, /확인 표시가 보임/u);
-    globalThis.fetch = async () => new Response('<html>not the data</html>', { status: 200 });
-    const [failed] = await runAttackChecks(config);
-    assert.match(failed.observed, /보이지 않음/u);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+    const results=await runAttackChecks(config);
+    const denied=results.find(r=>r.attackId==='anonymous_list');
+    const staticData=results.find(r=>r.attackId==='static_notes');
+    assert.match(denied.observed,/인증 거부 true/u);
+    assert.match(staticData.observed,/메모 0건\/404 true/u);
+    const publicRequest=calls.find(c=>c.target.endsWith('/data.json'));
+    assert.equal(publicRequest.init.redirect,'error');
+    assert.equal(publicRequest.init.headers,undefined);
+    globalThis.fetch=async()=>new Response('<html>not JSON</html>',{status:200});
+    const failed=await runAttackChecks(config);
+    assert.match(failed.find(r=>r.attackId==='anonymous_list').observed,/인증 거부 false/u);
+    assert.match(failed.find(r=>r.attackId==='static_notes').observed,/메모 0건\/404 false/u);
+  } finally { globalThis.fetch=originalFetch; }
 });

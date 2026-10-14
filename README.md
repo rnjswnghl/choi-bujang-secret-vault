@@ -170,3 +170,23 @@ src/detect.mjs는 docs/DETECT_EVENTS.md의 제공된 로컬 사건 계약을 사
 확인: `npm run detect:test`에서 정상 30건·120건·사용자별 100건·시간 밖 사건은 observe, 121건·200건은 회수 제안입니다. `node --test test/step9-detect.test.mjs`는 10분 경계·역순·입력 보존·잘못된 사건·사용자 분리를 검증합니다. `npm run decider:test`로 기존 판정 규칙을 확인하고 `npm run bundle`로 제출합니다.
 
 계약 한계: 제공된 사건에는 네트워크·기기 ID·판정이 없고 응답 대상도 subject입니다. 임의의 기기 ID나 네트워크를 만들지 않았습니다. 네트워크와 다량 조회의 복합 사건, 기기 한 개 지정, 실제 회수·회수 뒤 차단·경과 시간 측정은 운영 엔진/심판 계약과 집행 환경에서 확인해야 하며 이 로컬 연습으로 실측했다고 보고하지 않습니다. 회수 API·기기 권한 변경은 구현하지 않았습니다.
+
+## 10단계 저장점 · 검증한 백업에서 한 건 복구
+
+9단계 저장점 e0f6ded8380a8c9e30351c6584d6125612c61758의 판정기 사본을 recovery/safe-decider.mjs에 보존했습니다. policy-manifest.json의 버전·SHA-256을 복원 도구의 고정 값과 대조하며, 사본 누락·변조·검증 실패면 중단합니다. 실제 src/decider.mjs와 다른 서비스 규칙은 변경하지 않습니다.
+
+시험 정책 절차: `node scripts/restore-policy.mjs init`으로 시험 파일을 한 번 생성합니다(기존 시험 파일 덮어쓰기 금지). `node scripts/restore-policy.mjs`로 버전·바뀔 줄·전후 해시를 확인합니다. `node scripts/restore-policy.mjs apply <beforeSha256> <afterSha256>`은 확인한 두 해시가 같을 때만 artifacts/test-policy.mjs를 복원합니다. 감사 이력은 artifacts/policy-recovery-audit.jsonl에 추가하며 삭제하지 않습니다. 시험 폴더와 감사 파일은 Git에 올리지 않습니다.
+
+DB 준비는 필수입니다. Supabase SQL Editor에서 sql/step10-recovery.sql을 침해 시험 전에 한 번 실행하세요. 현재 메모가 안전한 상태인지 먼저 확인하세요. 이 SQL은 서버 전용 vault_recovery 스키마에 비공개 최초 사본과 해시를 저장하고, 이후 새 메모의 최초 INSERT만 백업합니다. UPDATE·DELETE는 사본을 바꾸지 않고, 재실행도 기존 사본을 덮어쓰지 않습니다. 백업 내용은 Git·정적 public·응답·로그에 내보내지 않습니다. 기존 비로그인/학생 Data API 차단과 다른 테이블 권한은 유지합니다.
+
+복구 서비스: 자료실 서버의 별도 복구 관리 경로 **POST /api/restore**. aleph.config.json의 restoreRoute도 /api/restore입니다. 요청 JSON은 `{ "id": "복원할 메모 UUID" }` 한 항목입니다. 검증된 심판 토큰의 시험 신원 B만 허용하고 A·일반 학생·익명·위조 역할·소유자 입력은 거부합니다. 기존 Vercel SUPABASE_URL·SUPABASE_SECRET_KEY를 사용하며 새 키를 만들지 않습니다. 소유자는 검증된 B 신원에서 결정합니다. 단건 백업 ID·소유자·내용 SHA-256을 검증하고 한 건만 원자적으로 복원한 뒤 결과 해시를 다시 검사하고 DB 감사 이력을 추가합니다. 사본 없음·해시 불일치·다른 소유자이면 중단합니다. 복구 경로는 일반 메모 접근 허용 목록에 추가하지 않습니다. 실제 복구는 SQL 준비 후 심판이 B 메모 변조·삭제로 확인합니다.
+
+재시험 순서:
+1. `npm run decider:test` — 등록 정상 허용, 미등록 거부, 복합 이상 추가 확인, 재확인 허용.
+2. `npm run detect:test` — 정상 유지, 시간·사용자 분리, 120건 초과 회수 제안.
+3. `node --test test/step*.test.mjs` — A 정상 CRUD, B의 A 자료 거부, 역할 위조 거부, 복구 인증·정책 보존.
+4. `node --test test/r5.test.mjs test/brute-force.test.mjs test/web-injection.test.mjs test/xdr-run.test.mjs` — 로그인·기존 보너스 방어 회귀.
+5. `npm run bundle` — 비로그인 자료 차단, 원본 anon 차단, 정적 자료 비공개, 배포 단계와 화면 키 검사.
+6. DB SQL 실행 뒤 과제의 「심판에게 제출하기」 — B 메모 변조/삭제 복원, 복원 해시 일치, 복구 직후 1~9단계 공격 재전송 확인.
+
+검증 결과: 관련 Node 시험 34개, 기존 판정기 4개·탐지 계약 6개, 새 npm install이 통과했습니다. 별도 로컬 PostgreSQL(PGlite)에서 SQL을 실제 실행하여 변조·삭제 복원, 소유자 경계, 해시 변조 거부, 다른 메모·감사 보존을 검증했습니다. 로컬 DB 시험과 실제 Supabase/심판 시험은 구분합니다. SQL 적용·운영 B 복원·접속 회수 이후 차단은 이 환경에서 미실행이며 결과를 꾸미지 않습니다. 공개 백업이나 현재 변조 자료로 원래 내용을 추정해 복구하지 않습니다.

@@ -40,5 +40,16 @@ export async function runAttackChecks(config) {
     keyCheck = responses.every(response => response.ok) ? `화면 파일 2개 확인; 공개/비밀 키 패턴 없음 ${sources.every(source => !/sb_publishable_|sb_secret_|eyJ[A-Za-z0-9_-]{12,}\.eyJ/.test(source))}` : '화면 파일 검사 실패: HTTP 오류';
   } catch { keyCheck = '미실행/연결 실패: 배포 화면 파일 검사 필요'; }
   attempts.push({attackId:'browser_key_scan',expected:'화면 HTML·JS에 Supabase 공개/비밀 키 없음',observed:keyCheck});
+  if (config.step >= 10) {
+    let observed;
+    try {
+      const response = await fetch(new URL(config.restoreRoute, config.publicAppUrl), {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}',
+        redirect: 'error', signal: AbortSignal.timeout(10000),
+      });
+      observed = `HTTP ${response.status}; 익명 복구 거부 ${[401,403].includes(response.status)}`;
+    } catch { observed = '미실행/연결 실패: 복구 경로 확인 불가'; }
+    attempts.push({attackId:'anonymous_restore',expected:'익명의 복구 POST는 401 또는 403',observed});
+  }
   return attempts;
 }
