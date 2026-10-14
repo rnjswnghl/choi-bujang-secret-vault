@@ -246,3 +246,9 @@ POST/GET /api/device는 등록 요청과 상태 확인용이며 보호 자료를
 5. 중지: 브라우저 로그아웃으로 메모리 키·토큰을 제거하고 관리자가 해당 기기 한 건을 revoked로 바꿉니다. 서비스 전체 중지는 Vercel 공식 배포 관리에서 수행합니다. 다른 기기를 일괄 회수하지 않습니다.
 6. 복구: 10단계 정책 preview/apply의 해시 확인 순서, B 단건 POST /api/restore와 복구 직후 재시험을 따릅니다. 감사 기록과 다른 메모는 보존합니다. 11단계 서명 요구를 해제하지 않습니다.
 7. `npm run bundle`의 commit·step·점검 범위를 대조하고 같은 저장소/배포를 공식 심판에 제출합니다. 41종 실제 결과는 심판 판정으로 확정합니다.
+
+### 12단계 runner_import_failed 수정
+
+격리 점검 모듈의 상대 import가 data URL 실행에서 ERR_UNSUPPORTED_RESOLVE_REQUEST로 실패하는 것을 재현했습니다. src/attack-check.mjs는 외부 import·파일·프로세스 의존성이 없는 HTTP 점검 모듈로 분리했습니다. scripts/bundle.mjs만 로컬 runRecoveryRetest를 가져와 두 번째 선택 인자로 연결합니다. 격리 실행에서 이 연결이 없으면 로컬 복원 재시험은 미실행으로 기록하며 HTTP 점검은 실제 실행합니다. 복구 API와 복구 직후 실제 메모 재시험 연결은 그대로입니다. 익명 자료/작전실 점검은 실제 상태와 서버 요청 ID(미제공 시 명시), 확인 시각을 기록합니다. 기대한 401 대신 실제 200이 오면 거부 false로 남깁니다.
+
+재현: `node --test test/step12-runner.test.mjs`는 저장소 파일을 상대 참조할 수 없는 data URL에서 runner를 가져오고 HTTP 점검·미실행 구분·로컬 실행기 연결을 검사합니다. 모의 fetch 시험이므로 운영 결과는 아닙니다. 커밋 후 `npm run bundle`로 배포 HTTP 실측을 별도 확인합니다. S12_SCREEN_MISMATCH 및 41종 최종 판정은 재제출로 확인해야 합니다.

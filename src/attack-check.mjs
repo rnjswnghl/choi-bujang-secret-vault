@@ -1,6 +1,5 @@
-import {runRecoveryRetest} from '../scripts/recovery-retest.mjs';
 // Only report actual requests. Never include tokens or memo bodies.
-export async function runAttackChecks(config) {
+export async function runAttackChecks(config, {runRecoveryRetest} = {}) {
   const attempts = [];
   for (const [path, id, expected] of [
     ['/api/notes', 'anonymous_list', '401 또는 403과 JSON 오류'],
@@ -14,7 +13,7 @@ export async function runAttackChecks(config) {
       const jsonType = response.headers.get('content-type')?.includes('application/json');
       const data = jsonType ? await response.json() : null;
       observed = `HTTP ${response.status}; JSON ${!!jsonType}`;
-      if (id === 'anonymous_list') observed += `; 인증 거부 ${[401,403].includes(response.status) && typeof data?.error === 'string'}`;
+      if (id === 'anonymous_list') observed += `; 인증 거부 ${[401,403].includes(response.status) && typeof data?.error === 'string'}; 요청 ${response.headers.get('x-request-id') ?? '미제공'}; 시각 ${new Date().toISOString()}`;
       if (id === 'static_notes') observed += `; 메모 0건/404 ${response.status === 404 || (response.ok && Array.isArray(data?.notes) && data.notes.length === 0)}`;
       if (id === 'deployment_identity') observed += `; 허용 경로 ${Array.isArray(data?.allowedRoutes) ? data.allowedRoutes.length : 0}`;
       if (id === 'deployment_identity') observed += `; 단계 ${data?.step ?? '확인 불가'}; 현재 단계 일치 ${response.ok && data?.step === config.step}`;
@@ -42,7 +41,9 @@ export async function runAttackChecks(config) {
   } catch { keyCheck = '미실행/연결 실패: 배포 화면 파일 검사 필요'; }
   attempts.push({attackId:'browser_key_scan',expected:'화면 HTML·JS에 Supabase 공개/비밀 키 없음',observed:keyCheck});
   if (config.step >= 10) {
-    try {
+    if (typeof runRecoveryRetest !== 'function') {
+      attempts.push({attackId:'post_restore_retest',expected:'시험 정책 복원 뒤 정상·금지 회귀 시험 실행',observed:'미실행: 격리 HTTP 점검에는 로컬 복원 실행기를 연결하지 않음; 운영 API 결과와 구분'});
+    } else try {
       const report=await runRecoveryRetest();
       for(const name of ['normal','unregistered']){
         const result=report.checks.find(r=>r.name===name);
@@ -76,7 +77,7 @@ export async function runAttackChecks(config) {
     let observed;
     try{
       const response=await fetch(new URL('/api/operations',config.publicAppUrl),{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)});
-      observed=`HTTP ${response.status}; 익명 작전실 거부 ${response.status===401}; 확인 ${new Date().toISOString()}`;
+      observed=`HTTP ${response.status}; 익명 작전실 거부 ${response.status===401}; 요청 ${response.headers.get('x-request-id') ?? '미제공'}; 확인 ${new Date().toISOString()}`;
     }catch{observed='미실행/연결 실패';}
     attempts.push({attackId:'operations_anonymous',expected:'익명 작전실 401, 기록 노출 없음',observed});
     attempts.push({attackId:'campaign_41',expected:'공식 심판 41종 실제 공격 판정',observed:'미실행: 로컬 시험과 구분; 임의 통과 처리 없음'});
