@@ -22,7 +22,7 @@
 </head>
 <body>
   <main>
-    <div class="eyebrow">BYTE BACK · 11단계 접속 앱</div>
+    <div class="eyebrow">BYTE BACK · 12단계 탈환 작전실</div>
     <h1>가상 자료실</h1>
     <p>로그인한 계정의 가상 메모를 관리합니다.</p>
     <div class="notice">로그인한 계정의 메모만 읽고 추가·수정·삭제할 수 있습니다. 기록에는 가상 자료만 입력하세요.</div>
@@ -30,6 +30,12 @@
     <button id="logout" hidden>로그아웃</button>
     <p id="status" role="status"></p>
     <section id="device-panel" hidden><p id="device-status" role="status">기기 승인 대기</p><button id="device-request" type="button">기기 승인 요청</button><button id="device-check" type="button">승인 상태 확인</button><p>앱 설치는 기기 승인이 아닙니다. 오프라인에서는 보호 자료를 열 수 없습니다. 새로고침하면 메모리의 키가 없어져 새 승인이 필요합니다.</p></section>
+    <section id="operations" hidden>
+      <h2>탈환 작전실</h2><p>실제 API 응답만 기록합니다. 로컬 시험과 41종 심판 결과는 별도입니다. 메모 본문은 작전실에 표시하지 않습니다.</p>
+      <button id="operations-refresh" type="button">서버 기록 확인</button><button id="operations-test" type="button">정상·금지 요청 실측</button>
+      <pre id="operations-summary" style="white-space:pre-wrap"></pre>
+      <div style="overflow:auto"><table><thead><tr><th>시험/단계</th><th>기대 결과</th><th>실제 결과</th><th>요청 ID</th><th>확인 시각</th></tr></thead><tbody id="operations-rows"></tbody></table></div>
+    </section>
     <section id="workspace" hidden>
       <form id="editor"><input id="note-id" type="hidden"><label>제목 <input id="title" required maxlength="200"></label><label>본문 <textarea id="body" maxlength="10000"></textarea></label><button>저장</button><button type="button" id="cancel">새 메모</button></form>
       <ul id="notes" aria-live="polite"></ul>

@@ -6,6 +6,8 @@ import config from '../aleph.config.json' with { type: 'json' };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
+  const clientRequestId=req.headers?.['x-client-request-id'];
+  res.setHeader('X-Request-Id', UUID.test(clientRequestId??'') ? clientRequestId : randomUUID());
   res.setHeader('X-Content-Type-Options', 'nosniff');
   const authorization = req.headers?.authorization;
   if (typeof authorization !== 'string' || authorization.length > 8192 || !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(authorization)) return res.status(401).json({ error: '로그인이 필요합니다.' });

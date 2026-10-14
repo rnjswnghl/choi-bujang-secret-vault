@@ -72,5 +72,14 @@ export async function runAttackChecks(config) {
       attempts.push({attackId,expected:attackId==='app_manifest'?'설치형 manifest 제공':'익명 승인 조회 401',observed});
     }
   }
+  if(config.step>=12){
+    let observed;
+    try{
+      const response=await fetch(new URL('/api/operations',config.publicAppUrl),{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)});
+      observed=`HTTP ${response.status}; 익명 작전실 거부 ${response.status===401}; 확인 ${new Date().toISOString()}`;
+    }catch{observed='미실행/연결 실패';}
+    attempts.push({attackId:'operations_anonymous',expected:'익명 작전실 401, 기록 노출 없음',observed});
+    attempts.push({attackId:'campaign_41',expected:'공식 심판 41종 실제 공격 판정',observed:'미실행: 로컬 시험과 구분; 임의 통과 처리 없음'});
+  }
   return attempts;
 }

@@ -30,7 +30,7 @@ async function deviceStatus(request=false){
  const response=await fetch(request?'/api/device':'/api/device?id='+approvedDevice?.id,{method:request?'POST':'GET',cache:'no-store',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:request?JSON.stringify({publicKey}):undefined});
  const result=await response.json();if(current!==generation)return;if(!response.ok)throw new Error(result.error);
  approvedDevice=result;el('device-status').textContent='기기 상태: '+result.status+' · '+result.id;
- el('workspace').hidden=result.status!=='approved';
+ el('workspace').hidden=result.status!=='approved'; el('operations').hidden=result.status!=='approved';
  if(result.status==='approved')await load();else el('notes').replaceChildren();
 }
 async function proof(path,method,body){
@@ -64,6 +64,7 @@ async function load() {
 }
 async function state(session) {
   generation++;
+  el('operations').hidden=true;el('operations-summary').textContent='';el('operations-rows').replaceChildren();
   el('login').hidden = !!session; el('logout').hidden = !session; el('workspace').hidden = true;
   if(currentUser!==session?.user?.id){approvedDevice=undefined;deviceKey=undefined;}
   currentUser=session?.user?.id;
@@ -90,6 +91,50 @@ await state(session);
 
 el('device-request').onclick=()=>deviceStatus(true).catch(e=>say(e.message));
 el('device-check').onclick=()=>deviceStatus(false).catch(e=>say(e.message));
-window.addEventListener('offline',()=>{generation++;el('workspace').hidden=true;el('notes').replaceChildren();say('오프라인입니다. 보호 자료는 오프라인으로 저장하지 않습니다.');});
+window.addEventListener('offline',()=>{generation++;el('operations').hidden=true;el('operations-summary').textContent='';el('operations-rows').replaceChildren();el('workspace').hidden=true;el('notes').replaceChildren();say('오프라인입니다. 보호 자료는 오프라인으로 저장하지 않습니다.');});
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>say('오프라인 안내 등록에 실패했습니다. 온라인으로 이용하세요.'));
+
+let campaignRows=[];
+function renderOperations(rows){
+ el('operations-rows').replaceChildren(...rows.map(row=>{
+  const tr=document.createElement('tr');
+  for(const value of [row.id,row.expected,row.execution==='not_run'?'미실행':row.actual,row.requestId??'—',row.checkedAt??'—']){
+   const td=document.createElement('td');td.textContent=String(value??'확인 불가');td.style.padding='8px';tr.append(td);
+  }return tr;
+ }));
+}
+async function operationsRequest(){
+ const current=generation;const {data:{session}}=await client.auth.getSession();
+ if(!session)throw new Error('로그인이 필요합니다.');
+ const path='/api/operations';
+ const response=await fetch(path,{cache:'no-store',headers:{...await proof(path,'GET'),Authorization:`Bearer ${session.access_token}`}});
+ if(!response.ok)throw new Error('작전실 조회 HTTP '+response.status);
+ const data=await response.json();if(current!==generation)return;
+ campaignRows=data.campaign;renderOperations(campaignRows);
+ el('operations-summary').textContent=JSON.stringify({requestId:data.requestId,checkedAt:data.checkedAt,rules:data.rules,devices:data.devices,recovery:data.recovery,policyBackup:data.policyBackup,detection:data.detection,identityRevocation:data.identityRevocation},null,2);
+}
+el('operations-refresh').onclick=()=>operationsRequest().catch(e=>say(e.message));
+el('operations-test').onclick=async()=>{
+ const current=generation;const {data:{session}}=await client.auth.getSession();if(!session)return;
+ const rows=[];
+ for(const [id,expected,signed,authenticated] of [
+  ['정상 본인 목록 / 4·5·11','HTTP 200',true,true],
+  ['무인증 목록 / 3·5','HTTP 401',false,false],
+  ['서명 없는 목록 / 11','HTTP 403',false,true]
+ ]){
+  const requestId=crypto.randomUUID();let actual,checkedAt;
+  try{
+   const headers={'X-Client-Request-Id':requestId};
+   if(authenticated)headers.Authorization=`Bearer ${session.access_token}`;
+   if(signed)Object.assign(headers,await proof('/api/notes','GET'));
+   const response=await fetch('/api/notes',{headers,cache:'no-store'});
+   actual='HTTP '+response.status+' · 서버 요청 ID '+(response.headers.get('X-Request-Id')??'미제공');checkedAt=new Date().toISOString();
+   // Discard the response body: no memo is copied to this report.
+   if(response.body)await response.body.cancel();
+  }catch{actual='연결 실패';checkedAt=new Date().toISOString();}
+  if(current!==generation)return;
+  rows.push({id,expected,actual,requestId,checkedAt,execution:'executed'});
+ }
+ renderOperations([...rows,...campaignRows]);
+};
