@@ -34,3 +34,11 @@ test('anonymous operations request is denied before database access',async()=>{
  const res={setHeader(){},status(n){this.code=n;return this;},json(data){this.data=data;}};
  await handler({method:'GET',headers:{}},res);assert.equal(res.code,401);assert.equal(res.data.error,'login_required');
 });
+test('malformed summaries stay unavailable and extra RPC fields never leak',async()=>{
+ for(const data of [null,{}, {restoreCount:-1,lastRestoreAt:null},{restoreCount:1,lastRestoreAt:'invalid'}]){
+  const db={from:()=>({select:()=>({eq:()=>({eq:async()=>({count:null})})})}),rpc:async()=>({data})};
+  const r=await readOperations(db,{userId:'owner'},'request');assert.equal(r.recovery.execution,'unavailable');assert.equal(r.devices.approved.count,null);
+ }
+ const db={from:()=>({select:()=>({eq:()=>({eq:async()=>({count:0})})})}),rpc:async()=>({data:{restoreCount:0,lastRestoreAt:null,content:'must-not-leak',owner_id:'must-not-leak'}})};
+ const r=await readOperations(db,{userId:'owner'},'request');assert.ok(!JSON.stringify(r).includes('must-not-leak'));assert.equal(r.recovery.restoreCount,0);
+});

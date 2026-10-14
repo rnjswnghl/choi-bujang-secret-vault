@@ -1,5 +1,5 @@
 // Only report actual requests. Never include tokens or memo bodies.
-export async function runAttackChecks(config, {runRecoveryRetest} = {}) {
+export async function runAttackChecks(config) {
   const attempts = [];
   for (const [path, id, expected] of [
     ['/api/notes', 'anonymous_list', '401 또는 403과 JSON 오류'],
@@ -32,7 +32,7 @@ export async function runAttackChecks(config, {runRecoveryRetest} = {}) {
     direct = `anon 직접 요청 HTTP ${response.status}; 접근 거부 ${[401,403].includes(response.status)}`;
   } catch { direct = '미실행/연결 실패: anon 직접 요청 확인 불가'; }
   attempts.push({ attackId: 'anon_data_api', expected: '세션 없는 anon 직접 Data API 읽기 거부', observed: direct });
-  attempts.push({ attackId: 'cross_owner_crud', expected: 'A/B 본인 CRUD 허용, 타인 GET·PUT·DELETE 404, 소유자 변경 거부', observed: '운영 A/B 시험 미실행; 로컬 모의 테스트 3건 통과는 실제 계정 검증 또는 심판 판정이 아님' });
+  attempts.push({ attackId: 'cross_owner_crud', expected: 'A/B 본인 CRUD 허용, 타인 GET·PUT·DELETE 404, 소유자 변경 거부', observed: '미실행: 운영 A/B 인증·승인 기기와 실제 상대 메모를 확인한 뒤 실행 필요' });
   let keyCheck;
   try {
     const responses = await Promise.all(['/','/app.js'].map(path => fetch(new URL(path, config.publicAppUrl), {redirect:'error',signal:AbortSignal.timeout(10000)})));
@@ -41,16 +41,7 @@ export async function runAttackChecks(config, {runRecoveryRetest} = {}) {
   } catch { keyCheck = '미실행/연결 실패: 배포 화면 파일 검사 필요'; }
   attempts.push({attackId:'browser_key_scan',expected:'화면 HTML·JS에 Supabase 공개/비밀 키 없음',observed:keyCheck});
   if (config.step >= 10) {
-    if (typeof runRecoveryRetest !== 'function') {
-      attempts.push({attackId:'post_restore_retest',expected:'시험 정책 복원 뒤 정상·금지 회귀 시험 실행',observed:'미실행: 격리 HTTP 점검에는 로컬 복원 실행기를 연결하지 않음; 운영 API 결과와 구분'});
-    } else try {
-      const report=await runRecoveryRetest();
-      for(const name of ['normal','unregistered']){
-        const result=report.checks.find(r=>r.name===name);
-        attempts.push({attackId:name==='normal'?'post_restore_normal':'post_restore_denied',expected:`시험 정책 복원 후 로컬 ${result.expected}`,observed:`복원 뒤 실행: ${result.observed}; 통과 ${result.passed}; 범위 local_simulation`});
-      }
-      attempts.push({attackId:'post_restore_retest',expected:'시험 정책 복원 뒤 정상·금지 회귀 시험 실행',observed:`로컬 복원 후 실행 ${report.results.every(r=>r.execution==='executed')}; 통과 ${report.results.every(r=>r.passed)}; 시험 ${report.results.reduce((n,r)=>n+(r.tests??0),0)}건; 운영 계정 시험과 구분`});
-    } catch { attempts.push({attackId:'post_restore_retest',expected:'시험 정책 복원 뒤 정상·금지 회귀 시험 실행',observed:'복원 후 로컬 재시험 실행 실패'}); }
+    attempts.push({attackId:'post_restore_retest',expected:'복구 직후 실제 API 정상·금지 재시험',observed:'미실행: 이 익명 HTTP 점검은 B 인증 복구를 실행하지 않음; 로컬 시험은 npm run recovery:retest로 별도 실행'});
 
     let observed;
     try {
