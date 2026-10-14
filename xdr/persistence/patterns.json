@@ -1,0 +1,27 @@
+[
+  {
+    "name": "suspicious_service",
+    "condition": "T1543 서비스 생성·변경 + 임시 실행 파일 또는 서명 없음과 반복 등록; 수준 10 이상",
+    "evidence": "MITRE T1543 시스템 프로세스 생성·변경. https://attack.mitre.org/techniques/T1543/; 임계값은 학생 정책이다."
+  },
+  {
+    "name": "suspicious_scheduled_task",
+    "condition": "T1053 예약 작업 + 임시 경로 실행 파일; 수준 10 이상",
+    "evidence": "MITRE T1053 예약 작업을 통한 지속성. https://attack.mitre.org/techniques/T1053/; 임계값은 학생 정책이다."
+  },
+  {
+    "name": "unlisted_startup_program",
+    "condition": "시작 폴더 실행 파일 추가 + 평소 목록에 없음; 수준 10 이상",
+    "evidence": "시작 폴더는 MITRE T1547.001에 직접 해당. 시험 경보의 T1543 표기도 수용. https://attack.mitre.org/techniques/T1547/001/"
+  },
+  {
+    "name": "persistence_review",
+    "condition": "관련 기법 경보 수준 5 이상이지만 차단 근거 조합은 부족",
+    "evidence": "T1543/T1053 신호 하나 또는 서명 미확인은 악성 확정 근거가 부족해 알림만 남긴다."
+  },
+  {
+    "name": "no_persistence_signal",
+    "condition": "차단·검토 패턴이 없는 정상 이벤트",
+    "evidence": "정상 기존 서비스·예약 작업을 기법 이름만으로 차단하지 않는다."
+  }
+]
