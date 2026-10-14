@@ -24,6 +24,7 @@ process.on('beforeExit',()=>{
   const b=JSON.parse(readFileSync('artifacts/submission.json','utf8'));
   unmatched=b.attackAttempts.filter(row=>{
    if(row.observed==='not_run')return false;
+   if(!/^HTTP [1-5]\d{2}; method=(GET|HEAD); urlSha256=[a-f0-9]{64}; bodyBytes=\d+$/.test(row.observed))return true;
    const method=row.observed.match(/\bmethod=(GET|HEAD)\b/)?.[1];
    const hash=row.observed.match(/\burlSha256=([a-f0-9]{64})\b/)?.[1];
    const status=Number(row.observed.match(/\bHTTP (\d{3})\b/)?.[1]);

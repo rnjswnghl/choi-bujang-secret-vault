@@ -14,16 +14,6 @@ export async function runAttackChecks(config) {
    const urlSha256=createHash('sha256').update(url.href).digest('hex');
    // These are measured facts, not a computed pass/deny claim.
    observed=`HTTP ${response.status}; method=${method}; urlSha256=${urlSha256}; bodyBytes=${bytes(body)}`;
-   let json;try{json=JSON.parse(body);}catch{}
-   if(Array.isArray(json))observed+=`; jsonArrayLength=${json.length}`;
-   if(attackId==='static_notes'&&Array.isArray(json?.notes))observed+=`; notesCount=${json.notes.length}`;
-   if(attackId==='deployment_identity')observed+=`; step=${Number.isSafeInteger(json?.step)?json.step:'unknown'}`;
-   if(attackId==='security_header')observed+=`; nosniff=${response.headers.get('x-content-type-options')==='nosniff'}`;
-   if(attackId==='app_manifest')observed+=`; standalone=${json?.display==='standalone'}`;
-   if(attackId==='browser_key_scan'||attackId==='browser_app_key_scan')observed+=`; keyPatternsFound=${/sb_publishable_|sb_secret_|eyJ[A-Za-z0-9_-]{12,}\.eyJ/.test(body)?1:0}`;
-   const requestId=response.headers.get('x-request-id');
-   if(requestId&&/^[a-zA-Z0-9_-]{1,80}$/.test(requestId))observed+=`; requestId=${requestId}`;
-   observed+=`; checkedAt=${new Date().toISOString()}`;
   }catch{observed='not_run';}
   attempts.push({attackId,expected,observed});
  }

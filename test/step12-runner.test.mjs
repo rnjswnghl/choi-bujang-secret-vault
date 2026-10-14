@@ -34,7 +34,7 @@ test('data URL and restricted VM report metadata matching independently captured
    for(const row of report){
     assert.equal(Object.keys(row).sort().join(','),'attackId,expected,observed');
     if(row.observed==='not_run')continue;
-    const match=row.observed.match(/^HTTP (\d{3}); method=(GET|HEAD); urlSha256=([a-f0-9]{64}); bodyBytes=(\d+)/);
+    const match=row.observed.match(/^HTTP (\d{3}); method=(GET|HEAD); urlSha256=([a-f0-9]{64}); bodyBytes=(\d+)$/);
     assert.ok(match,row.attackId);
     assert.ok(records.some(r=>r.caseId===row.attackId&&r.requestKey==='read'&&r.status===Number(match[1])&&r.method===match[2]&&r.hash===match[3]&&r.bytes===Number(match[4])),row.attackId);
    }
@@ -83,5 +83,24 @@ test('official caseId record linkage detects absent, mistyped and wrong requestK
   assert.equal(matches(records.map(r=>({...r,requestKey:'wrong'}))),0);
   const skipped=report.filter(r=>r.observed==='not_run');
   assert.ok(skipped.every(row=>!records.some(r=>r.caseId===row.attackId)));
+ }finally{globalThis.fetch=original;}
+});
+
+test('observed entire string contains only judge-supported facts, with no extra text or fields',async()=>{
+ const original=globalThis.fetch;
+ try{
+  const module=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+  globalThis.fetch=async(url)=>response(url);
+  const allowed=/^HTTP [1-5]\d{2}; method=(GET|HEAD); urlSha256=[a-f0-9]{64}; bodyBytes=\d+$/;
+  for(let step=1;step<=12;step++){
+   const rows=await module.runAttackChecks({...config,step});
+   for(const row of rows){
+    if(row.observed==='not_run')continue;
+    assert.match(row.observed,allowed,row.attackId);
+    for(const extra of ['requestId=fixture','checkedAt=2026','notesCount=0','step=12','nosniff=true','standalone=true','keyPatternsFound=0','통과']){
+     assert.equal(allowed.test(row.observed+'; '+extra),false,extra);
+    }
+   }
+  }
  }finally{globalThis.fetch=original;}
 });

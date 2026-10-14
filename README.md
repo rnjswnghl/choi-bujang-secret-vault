@@ -289,3 +289,9 @@ POST/GET /api/device는 등록 요청과 상태 확인용이며 보호 자료를
 모든 실측 행은 동일 caseId의 실제 GET 요청과 연결됩니다. observed에는 실제 상태·메서드·URL 지문·바이트 수·서버 요청 ID·시각만 남깁니다. 독립 가드는 fetch 시점에 공식 caseId/requestKey를 수집하고 같은 attackId의 실제 응답과 일대일로 대조합니다. caseId 누락·잘못된 사례·잘못된 requestKey·쓰기 요청은 runner가 catch해도 검증 실패입니다. 쓰기·복구·A/B·공식 41종은 실제 미실행이라 not_run으로 남기며 연결 요청을 만들어내지 않습니다. 이전 로컬 URL 지문 대조만 통과했다고 심판 ID 대조까지 성공한 것으로 안내한 것은 잘못된 검증 범위였습니다.
 
 확인 명령: `npm test` 및 `NODE_OPTIONS='--import=./scripts/bundle-readonly-guard.mjs' npm run bundle`. 같은 커밋에서 모든 공식 사례 연결과 관측값이 일치하고 blocked/unmatched가 0인지 확인합니다. 심판 최종 판정은 재제출로 확인합니다.
+
+### observed 허용 목록 제한
+
+a2e717018820의 공식 사례 연결은 인식됐으나 observed에 requestId·checkedAt·notesCount·step·nosniff·standalone·keyPatternsFound를 붙여 불합격했습니다. 이번에는 observed 전체를 `HTTP <상태>; method=GET; urlSha256=<64자리 SHA-256>; bodyBytes=<정수>` 네 관측값 또는 정확한 `not_run`으로 제한합니다. 추가 설명·성공 문구·다른 필드는 붙이지 않습니다. request ID/시각은 별도 로컬 감사 기록과 기존 작전실 표에만 남기고 observed에는 넣지 않습니다. 공식 alephEvidence 사례 연결과 GET·HEAD 제한은 그대로 유지합니다.
+
+시험과 독립 가드는 전체 문자열에 시작/끝 앵커를 적용합니다. 허용된 네 값 뒤에 잘못된 필드나 문장을 하나라도 붙이면 검증 실패입니다. 부분 문자열만 맞으면 통과시키던 로컬 검증을 수정했습니다. 실제 응답에서 얻은 숫자만 기록하며 쓰기·복구·A/B·공식 41종은 not_run으로 남깁니다.
