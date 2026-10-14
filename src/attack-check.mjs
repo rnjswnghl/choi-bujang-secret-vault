@@ -1,3 +1,4 @@
+import {runRecoveryRetest} from '../scripts/recovery-retest.mjs';
 // Only report actual requests. Never include tokens or memo bodies.
 export async function runAttackChecks(config) {
   const attempts = [];
@@ -41,6 +42,15 @@ export async function runAttackChecks(config) {
   } catch { keyCheck = '미실행/연결 실패: 배포 화면 파일 검사 필요'; }
   attempts.push({attackId:'browser_key_scan',expected:'화면 HTML·JS에 Supabase 공개/비밀 키 없음',observed:keyCheck});
   if (config.step >= 10) {
+    try {
+      const report=await runRecoveryRetest();
+      for(const name of ['normal','unregistered']){
+        const result=report.checks.find(r=>r.name===name);
+        attempts.push({attackId:name==='normal'?'post_restore_normal':'post_restore_denied',expected:`시험 정책 복원 후 로컬 ${result.expected}`,observed:`복원 뒤 실행: ${result.observed}; 통과 ${result.passed}; 범위 local_simulation`});
+      }
+      attempts.push({attackId:'post_restore_retest',expected:'시험 정책 복원 뒤 정상·금지 회귀 시험 실행',observed:`로컬 복원 후 실행 ${report.results.every(r=>r.execution==='executed')}; 통과 ${report.results.every(r=>r.passed)}; 시험 ${report.results.reduce((n,r)=>n+(r.tests??0),0)}건; 운영 계정 시험과 구분`});
+    } catch { attempts.push({attackId:'post_restore_retest',expected:'시험 정책 복원 뒤 정상·금지 회귀 시험 실행',observed:'복원 후 로컬 재시험 실행 실패'}); }
+
     let observed;
     try {
       const response = await fetch(new URL(config.restoreRoute, config.publicAppUrl), {

@@ -1,22 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,writeFile,mkdir,rm} from 'node:fs/promises';
+import {retestRestoredNote} from '../src/recovery-retest.mjs';
 import {previewPolicy,restorePolicy} from '../scripts/restore-policy.mjs';
 const root=new URL('../',import.meta.url);
 const id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 let source=await readFile(new URL('../api/restore.js',import.meta.url),'utf8');
 source=source.replace(/^import .*;\n/gm,'').replace('export default async function handler','async function handler');
-const build=new Function('createClient','createLoginVerifier','config',source+'\nreturn handler;');
+const build=new Function('notesHandler','retestRestoredNote','createClient','createLoginVerifier','config',source+'\nreturn handler;');
 process.env.SUPABASE_URL='https://hzovkgmggfqoumxwbejm.supabase.co';
 process.env.SUPABASE_SECRET_KEY='local-test-placeholder';
-async function request({user={kind:'judge',identity:'b',userId:'fixture-B'},body={id},method='POST',error=null,url='/api/restore'}={}) {
+async function request({user={kind:'judge',identity:'b',userId:'fixture-B'},body={id},method='POST',error=null,url='/api/restore',broken=false}={}) {
  let status,result,called=false;
- const handler=build(()=>({rpc:async(name,args)=>{called=true;assert.equal(name,'restore_vault_note');assert.deepEqual(args,{p_id:id,p_owner:'fixture-B'});return {error,data:{restored:true,id,contentHash:'a'.repeat(64)}};}}),()=>async()=>user,{identityProvider:{issuer:process.env.SUPABASE_URL+'/auth/v1'}});
+ const notes=async(req,res)=>res.status(broken?200:!req.headers.authorization?401:req.method==='PUT'?403:200).json({id,title:broken?'wrong':'fixture',body:'fixture'});
+ const db={from(){const q={select(){return q;},eq(){return q;},neq(){return q;},limit:async()=>({data:[],error:null}),maybeSingle:async()=>({data:{id,title:'fixture',content:'fixture'},error:null})};return q;},rpc:async(name,args)=>{called=true;assert.equal(name,'restore_vault_note');assert.deepEqual(args,{p_id:id,p_owner:'fixture-B'});return {error,data:{restored:true,id,contentHash:'a'.repeat(64)}};}};
+ const handler=build(notes,retestRestoredNote,()=>db,()=>async()=>user,{identityProvider:{issuer:process.env.SUPABASE_URL+'/auth/v1'}});
  await handler({method,url,headers:{authorization:'Bearer test.placeholder.signature'},body},{setHeader(){},status(s){status=s;return this;},json(v){result=v;}});
  return {status,result,called};
 }
 test('recovery only accepts verified judge B and exact ID-only POST',async()=>{
- assert.equal((await request()).status,200);
+ const success=await request();
+ assert.equal(success.status,200);
+ assert.ok(success.result.retest.slice(0,3).every(r=>r.passed===true));
+ assert.equal((await request({broken:true})).status,502);
  for(const user of [null,{kind:'student',userId:'fixture-B'},{kind:'judge',identity:'a',userId:'fixture-A'}])assert.equal((await request({user})).called,false);
  for(const body of [{id,owner_id:'fixture-B'},{id,role:'judge'},{id:'invalid'},{}])assert.equal((await request({body})).status,400);
  assert.equal((await request({method:'GET'})).status,405);

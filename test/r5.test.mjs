@@ -41,7 +41,7 @@ test('current attack checks verify anonymous denial and no static memo disclosur
       const data=anonymous?{error:'login_required'}:{notes:[]};
       return new Response(JSON.stringify(data),{status:anonymous?401:200,headers:{'content-type':'application/json'}});
     };
-    const results=await runAttackChecks(config);
+    const results=await runAttackChecks({...config,step:1});
     const denied=results.find(r=>r.attackId==='anonymous_list');
     const staticData=results.find(r=>r.attackId==='static_notes');
     assert.match(denied.observed,/인증 거부 true/u);
