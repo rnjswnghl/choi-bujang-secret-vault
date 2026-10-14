@@ -21,7 +21,7 @@ export async function runAttackChecks(config) {
     } catch { observed = '미실행/연결 실패: 운영 배포를 확인하세요.'; }
     attempts.push({ attackId: id, expected, observed });
   }
-  attempts.push({ attackId: 'account_a_crud', expected: '정상 A 로그인 후 추가·수정·삭제 가능', observed: '미실행: 테스트 계정과 SQL 적용 필요; 비밀번호·토큰을 묶음에 저장하지 않음' });
+  attempts.push({ attackId: 'account_a_crud', expected: '정상 A 로그인 후 추가·수정·삭제 가능', observed: 'not_run' });
   let direct;
   try {
     // Public publishable key, no session token: Supabase assigns the anon role.
@@ -32,7 +32,7 @@ export async function runAttackChecks(config) {
     direct = `anon 직접 요청 HTTP ${response.status}; 접근 거부 ${[401,403].includes(response.status)}`;
   } catch { direct = '미실행/연결 실패: anon 직접 요청 확인 불가'; }
   attempts.push({ attackId: 'anon_data_api', expected: '세션 없는 anon 직접 Data API 읽기 거부', observed: direct });
-  attempts.push({ attackId: 'cross_owner_crud', expected: 'A/B 본인 CRUD 허용, 타인 GET·PUT·DELETE 404, 소유자 변경 거부', observed: '미실행: 운영 A/B 인증·승인 기기와 실제 상대 메모를 확인한 뒤 실행 필요' });
+  attempts.push({ attackId: 'cross_owner_crud', expected: 'A/B 본인 CRUD 허용, 타인 GET·PUT·DELETE 404, 소유자 변경 거부', observed: 'not_run' });
   let keyCheck;
   try {
     const responses = await Promise.all(['/','/app.js'].map(path => fetch(new URL(path, config.publicAppUrl), {redirect:'error',signal:AbortSignal.timeout(10000)})));
@@ -41,17 +41,9 @@ export async function runAttackChecks(config) {
   } catch { keyCheck = '미실행/연결 실패: 배포 화면 파일 검사 필요'; }
   attempts.push({attackId:'browser_key_scan',expected:'화면 HTML·JS에 Supabase 공개/비밀 키 없음',observed:keyCheck});
   if (config.step >= 10) {
-    attempts.push({attackId:'post_restore_retest',expected:'복구 직후 실제 API 정상·금지 재시험',observed:'미실행: 이 익명 HTTP 점검은 B 인증 복구를 실행하지 않음; 로컬 시험은 npm run recovery:retest로 별도 실행'});
+    attempts.push({attackId:'post_restore_retest',expected:'복구 직후 실제 API 정상·금지 재시험',observed:'not_run'});
 
-    let observed;
-    try {
-      const response = await fetch(new URL(config.restoreRoute, config.publicAppUrl), {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}',
-        redirect: 'error', signal: AbortSignal.timeout(10000),
-      });
-      observed = `HTTP ${response.status}; 익명 복구 거부 ${[401,403].includes(response.status)}`;
-    } catch { observed = '미실행/연결 실패: 복구 경로 확인 불가'; }
-    attempts.push({attackId:'anonymous_restore',expected:'익명의 복구 POST는 401 또는 403',observed});
+    attempts.push({attackId:'anonymous_restore',expected:'익명 복구 POST 거부; 쓰기 요청은 별도 운영 시험',observed:'not_run'});
   }
   if(config.step>=11){
     for(const [path,attackId] of [['/manifest.webmanifest','app_manifest'],['/api/device?id='+ '0'.repeat(64),'device_approval_anonymous']]){
@@ -71,7 +63,7 @@ export async function runAttackChecks(config) {
       observed=`HTTP ${response.status}; 익명 작전실 거부 ${response.status===401}; 요청 ${response.headers.get('x-request-id') ?? '미제공'}; 확인 ${new Date().toISOString()}`;
     }catch{observed='미실행/연결 실패';}
     attempts.push({attackId:'operations_anonymous',expected:'익명 작전실 401, 기록 노출 없음',observed});
-    attempts.push({attackId:'campaign_41',expected:'공식 심판 41종 실제 공격 판정',observed:'미실행: 로컬 시험과 구분; 임의 통과 처리 없음'});
+    attempts.push({attackId:'campaign_41',expected:'공식 심판 41종 실제 공격 판정',observed:'not_run'});
   }
   return attempts;
 }

@@ -260,3 +260,11 @@ POST/GET /api/device는 등록 요청과 상태 확인용이며 보호 자료를
 작전실은 집계가 빠지거나 값이 잘못됐을 때 실행 성공/0건으로 표시하지 않습니다. 복구 RPC 응답에서 restoreCount·lastRestoreAt만 선택해 표시하며 추가 필드와 본문은 전달하지 않습니다. 사본 버전은 configured_backup_metadata로 표시하고 실제 복구 검증 성공으로 취급하지 않습니다. 서버가 401/403을 반환하면 남아 있는 자료와 작전실 기록을 지우고 승인 상태를 다시 확인해야 합니다. 이번 수정은 DB 자료·정책·감사 이력과 제공 엔진의 발급자 설정을 변경하지 않습니다.
 
 재현 순서: 해당 제출 커밋을 새로 받기 → `npm install` → `npm test` → `npm run decider:test` → `npm run detect:test` → `npm run recovery:retest` → `npm run build -- --local` → 공식 Vercel 환경에서 배포 커밋 대조 → `npm run bundle`. bundle-notes.json은 로컬에서 설명을 작성하며 Git/제출 소스에 비밀값을 포장하지 않습니다. 화면에서는 로그인/기기 승인 뒤 서버 기록 확인과 정상·금지 요청 실측을 누릅니다. 정상 서명 요청 200, 익명 요청 401, 로그인했으나 서명 없는 요청 403이 기대 결과입니다. 41종 점수와 S12_SCREEN_MISMATCH 최종 통과는 공식 재판정으로 확인합니다.
+
+### S12_BUNDLE_UNSUPPORTED · GET/HEAD 전용 제출 점검
+
+심판이 명시한 격리 환경의 요청 계약은 공개 HTTPS에 대한 GET·HEAD만 허용합니다. 제출 점검에 남아 있던 익명 POST /api/restore를 제거했습니다. 쓰기·복구 실행·A/B CRUD·공식 41종 시험이 필요한 점검은 observed를 정확히 `not_run`으로 기록합니다. 이는 거부 성공이나 시험 통과가 아니라 미실행입니다. 복구 API 자체와 이전 보안 규칙은 변경하지 않습니다.
+
+`NODE_OPTIONS='--import=./scripts/bundle-readonly-guard.mjs' npm run bundle`로 전체 명령을 읽기 전용 요청 가드 아래 실행합니다. 가드는 금지 요청을 runner가 catch하더라도 마지막 종료 코드를 실패로 만듭니다. `requests`는 실제 fetch 시도 수이고 `blocked=0`이어야 합니다. test/step12-runner.test.mjs는 1~12단계 각각에서 GET/HEAD만 시도하는지 검사합니다. test/step12-bonus-contract.test.mjs는 단계 12 이상, 문서의 18개 이름만 읽는지, 360개 가상 요청의 응답 5개 필드와 RULE_IDS를 검사합니다. 이 가상 조합은 공식 41종 공격이 아닙니다.
+
+직접 확인: 승인된 계정으로 「서버 기록 확인」에서 API 집계와 표시를 비교하고 「정상·금지 요청 실측」에서 서명 정상 200·무인증 401·무서명 403을 확인합니다. 조회 실패·회수·로그아웃 시 이전 기록은 사라져야 합니다. 공식 41종 결과 없는 항목은 미실행이고 엔진 출처는 ALEPH SDP 엔진 사용입니다. 실제 운영 A/B와 41종 판정은 이 환경에서 완료됐다고 주장하지 않습니다.

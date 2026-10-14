@@ -29,7 +29,7 @@ test('data URL import and restricted VM both run without repository or Node depe
    const report=await entry(config);assert.ok(report.length<=20);
    assert.ok(report.every(r=>Object.keys(r).sort().join(',')==='attackId,expected,observed'));
    assert.match(report.find(r=>r.attackId==='anonymous_list').observed,/HTTP 401.*인증 거부 true.*fixture-request-id.*시각/);
-   for(const id of ['post_restore_retest','cross_owner_crud','campaign_41'])assert.match(report.find(r=>r.attackId===id).observed,/미실행/);
+   for(const id of ['post_restore_retest','cross_owner_crud','campaign_41'])assert.equal(report.find(r=>r.attackId===id).observed,'not_run');
   }
  }finally{globalThis.fetch=original;}
 });
@@ -46,6 +46,28 @@ test('unexpected allow, invalid JSON, absent IDs and network failure never becom
    const row=report.find(r=>r.attackId==='anonymous_list');
    if(name==='unexpected_allow'){assert.match(row.observed,/HTTP 200.*인증 거부 false.*미제공/);}
    else assert.match(row.observed,/미실행|실패/);
+  }
+ }finally{globalThis.fetch=original;}
+});
+
+test('every step sends only HTTPS GET/HEAD and writing checks are exactly not_run',async()=>{
+ const original=globalThis.fetch;const module=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+ try{
+  for(let step=1;step<=12;step++){
+   const calls=[],blocked=[];
+   globalThis.fetch=async(url,init={})=>{
+    const target=new URL(url);const method=(init.method??'GET').toUpperCase();
+    calls.push({method,path:target.pathname});
+    if(target.protocol!=='https:'||!['GET','HEAD'].includes(method)||init.body!==undefined){blocked.push({method,path:target.pathname});throw new Error('read_only_violation');}
+    return response(url);
+   };
+   const report=await module.runAttackChecks({...config,step});
+   // Inspect attempted calls even if the runner catches fetch exceptions.
+   assert.deepEqual(blocked,[],`step ${step}`);
+   assert.ok(!calls.some(call=>call.path==='/api/restore'));
+   for(const id of ['account_a_crud','cross_owner_crud',...(step>=10?['anonymous_restore','post_restore_retest']:[]),...(step>=12?['campaign_41']:[])]){
+    assert.equal(report.find(r=>r.attackId===id).observed,'not_run');
+   }
   }
  }finally{globalThis.fetch=original;}
 });
